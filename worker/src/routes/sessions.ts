@@ -19,11 +19,8 @@ const createSchema = z.object({
   supervisorId: z.string().nullable().optional()
 }).refine(v => new Date(v.plannedEndAt) > new Date(v.plannedStartAt), 'Аяқталу уақыты басталу уақытынан кейін болуы керек');
 
-const checkinSchema = z.object({
-  response: z.enum(['SAFE', 'NEED_HELP']),
-  latitude: z.number().min(-90).max(90).nullable().optional(),
-  longitude: z.number().min(-180).max(180).nullable().optional()
-});
+const locationSchema = z.object({ latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(), accuracy: z.number().min(0).max(10000).nullable().optional() });
+const checkinSchema = locationSchema.extend({ response: z.enum(['SAFE', 'NEED_HELP']) });
 
 const sosSchema = z.object({
   message: z.string().max(1000).optional(),
@@ -103,6 +100,8 @@ app.post('/:id/start', async c => {
   if (owned.error) return owned.error;
   const session = owned.session;
   if (session.status !== 'PLANNED') return c.json({ error: { code: 'INVALID_STATE', message: 'Тек жоспарланған сессияны бастауға болады' } }, 409);
+  const location = locationSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!location.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'GPS координаттары дұрыс емес' } }, 400);
   const now = new Date();
   const due = new Date(now.getTime() + session.checkin_interval_minutes * 60_000).toISOString();
   const update = await c.env.DB.prepare(
@@ -112,6 +111,9 @@ app.post('/:id/start', async c => {
   await c.env.DB.prepare(
     `INSERT INTO safety_checkins (id,session_id,employee_id,due_at) VALUES (?,?,?,?)`
   ).bind(crypto.randomUUID(), session.id, c.get('user').id, due).run();
+  if (location.data.latitude != null && location.data.longitude != null) {
+    await c.env.DB.prepare(`INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,accuracy,recorded_at,source) VALUES (?,?,?,?,?,?,?,'GPS')`).bind(crypto.randomUUID(), c.get('user').id, session.id, location.data.latitude, location.data.longitude, location.data.accuracy ?? null, now.toISOString()).run();
+  }
   await c.env.DB.prepare(
     `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id) VALUES (?,?,'SESSION_STARTED','SAFETY_SESSION',?)`
   ).bind(crypto.randomUUID(), c.get('user').id, session.id).run();
@@ -139,8 +141,8 @@ app.post('/:id/checkin', async c => {
   ).bind(crypto.randomUUID(), session.id, c.get('user').id, nextDue).run();
   if (value.latitude != null && value.longitude != null) {
     await c.env.DB.prepare(
-      `INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,recorded_at,source) VALUES (?,?,?,?,?,?,'GPS')`
-    ).bind(crypto.randomUUID(), c.get('user').id, session.id, value.latitude, value.longitude, now.toISOString()).run();
+      `INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,accuracy,recorded_at,source) VALUES (?,?,?,?,?,?,?,'GPS')`
+    ).bind(crypto.randomUUID(), c.get('user').id, session.id, value.latitude, value.longitude, value.accuracy ?? null, now.toISOString()).run();
   }
   if (value.response === 'NEED_HELP') {
     const alertId = crypto.randomUUID();
