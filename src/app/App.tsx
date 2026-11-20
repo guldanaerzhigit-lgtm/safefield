@@ -3,6 +3,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SessionsPage } from '../pages/SessionsPage';
 import { SetupPage } from '../pages/SetupPage';
+import { AlertsPage } from '../pages/AlertsPage';
 import { useAuthStore } from '../stores/authStore';
 
 export default function App() {
@@ -12,6 +13,7 @@ export default function App() {
     <Route path="/setup" element={token ? <Navigate to="/" replace /> : <SetupPage />} />
     <Route path="/" element={token ? <DashboardPage /> : <Navigate to="/login" replace />} />
     <Route path="/sessions" element={token ? <SessionsPage /> : <Navigate to="/login" replace />} />
+    <Route path="/alerts" element={token ? <AlertsPage /> : <Navigate to="/login" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>;
 }
