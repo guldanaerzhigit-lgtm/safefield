@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin';
 import teamRoutes from './routes/team';
 import monitoringRoutes from './routes/monitoring';
 import dispatchRoutes from './routes/dispatch';
+import notificationRoutes from './routes/notifications';
 import zoneRoutes from './routes/zones';
 const app = new Hono<{ Bindings: Env }>();
 app.use('*', logger());
@@ -27,7 +28,7 @@ v1.get('/health', async (c) => {
     return c.json({ ok: false, service: 'safefield-api', database: 'unavailable' }, 503);
   }
 });
-v1.route('/auth', authRoutes); v1.route('/dashboard', dashboardRoutes); v1.route('/sessions', sessionRoutes); v1.route('/alerts', alertRoutes); v1.route('/admin', adminRoutes); v1.route('/team', teamRoutes); v1.route('/monitoring', monitoringRoutes); v1.route('/dispatch', dispatchRoutes); v1.route('/zones', zoneRoutes);
+v1.route('/auth', authRoutes); v1.route('/dashboard', dashboardRoutes); v1.route('/sessions', sessionRoutes); v1.route('/alerts', alertRoutes); v1.route('/admin', adminRoutes); v1.route('/team', teamRoutes); v1.route('/monitoring', monitoringRoutes); v1.route('/dispatch', dispatchRoutes); v1.route('/notifications', notificationRoutes); v1.route('/zones', zoneRoutes);
 app.route('/api/v1', v1);
 app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
 export default { fetch: app.fetch };
