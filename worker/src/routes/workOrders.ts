@@ -109,6 +109,13 @@ app.post('/:id/checkpoints/scan', async c => {
   if(!parsed.success)return c.json({error:{code:'VALIDATION_ERROR',message:'QR коды дұрыс емес'}},400);
   const cp=await c.env.DB.prepare('SELECT id,title,latitude,longitude,radius_meters AS radiusMeters FROM work_order_checkpoints WHERE code=? AND work_order_id=? AND is_active=1').bind(parsed.data.code.trim(),access.order.id).first() as {id:string;title:string;latitude:number|null;longitude:number|null;radiusMeters:number}|null;
   if(!cp)return c.json({error:{code:'CHECKPOINT_NOT_FOUND',message:'Бұл QR код тапсырманың бақылау нүктесіне тиесілі емес'}},404);
+  if(cp.latitude!==null && cp.longitude!==null){
+    if(parsed.data.latitude==null || parsed.data.longitude==null)return c.json({error:{code:'GPS_REQUIRED',message:'Бұл нүктені растау үшін GPS рұқсатын қосыңыз'}},422);
+    const rad=(v:number)=>v*Math.PI/180,dLat=rad(parsed.data.latitude-cp.latitude),dLon=rad(parsed.data.longitude-cp.longitude);
+    const a=Math.sin(dLat/2)**2+Math.cos(rad(cp.latitude))*Math.cos(rad(parsed.data.latitude))*Math.sin(dLon/2)**2;
+    const distance=6371000*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    if(distance>cp.radiusMeters)return c.json({error:{code:'OUTSIDE_CHECKPOINT_RADIUS',message:'Сіз бақылау нүктесінен тыс жердесіз. Қашықтық: '+Math.round(distance)+' м. Рұқсат етілген радиус: '+cp.radiusMeters+' м.'}},403);
+  }
   try {
     await c.env.DB.prepare('INSERT INTO work_order_checkpoint_scans(id,checkpoint_id,work_order_id,employee_id,latitude,longitude,accuracy,scanned_at,result) VALUES(?,?,?,?,?,?,?, ?,\'VERIFIED\')')
       .bind(crypto.randomUUID(),cp.id,access.order.id,user.id,parsed.data.latitude??null,parsed.data.longitude??null,parsed.data.accuracy??null,new Date().toISOString()).run();
@@ -124,17 +131,24 @@ app.post('/:id/evidence', async c => {
   const parsed=evidenceSchema.safeParse(await c.req.json().catch(()=>null));
   if(!parsed.success)return c.json({error:{code:'VALIDATION_ERROR',message:'Фото деректері дұрыс емес немесе файл тым үлкен'}},400);
   if(!parsed.data.photoData.startsWith('data:'+parsed.data.mimeType+';base64,'))return c.json({error:{code:'INVALID_IMAGE',message:'Сурет пішімі дұрыс емес'}},400);
-  const d=parsed.data,id=crypto.randomUUID();
-  await c.env.DB.prepare('INSERT INTO work_order_evidence(id,work_order_id,uploaded_by,evidence_type,file_name,mime_type,photo_data,latitude,longitude,accuracy,captured_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(id,access.order.id,user.id,d.evidenceType,d.fileName,d.mimeType,d.photoData,d.latitude??null,d.longitude??null,d.accuracy??null,d.capturedAt).run();
+  if(!c.env.EVIDENCE_BUCKET)return c.json({error:{code:'STORAGE_UNAVAILABLE',message:'Фото қоймасы уақытша қолжетімсіз'}},503);
+  const d=parsed.data,id=crypto.randomUUID(),objectKey='work-orders/'+access.order.id+'/'+id+'.'+(d.mimeType==='image/png'?'png':d.mimeType==='image/webp'?'webp':'jpg');
+  const encoded=d.photoData.slice(d.photoData.indexOf(',')+1);
+  const binary=Uint8Array.from(atob(encoded),ch=>ch.charCodeAt(0));
+  await c.env.EVIDENCE_BUCKET.put(objectKey,binary,{httpMetadata:{contentType:d.mimeType},customMetadata:{workOrderId:access.order.id,evidenceId:id,uploadedBy:user.id}});
+  try {
+    await c.env.DB.prepare('INSERT INTO work_order_evidence(id,work_order_id,uploaded_by,evidence_type,file_name,mime_type,photo_data,object_key,latitude,longitude,accuracy,captured_at) VALUES(?,?,?,?,?,?,\'\',?,?,?,?,?)')
+      .bind(id,access.order.id,user.id,d.evidenceType,d.fileName,d.mimeType,objectKey,d.latitude??null,d.longitude??null,d.accuracy??null,d.capturedAt).run();
+  } catch(error) { await c.env.EVIDENCE_BUCKET.delete?.(objectKey); throw error; }
   await audit(c,'WORK_ORDER_EVIDENCE_ADDED',access.order.id,access.order.departmentId);
   return c.json({ok:true,id},201);
 });
 
 app.get('/:id/evidence/:evidenceId/photo', async c => {
   const access=await getOrder(c,c.req.param('id')); if(access.error)return access.error;
-  const row=await c.env.DB.prepare('SELECT photo_data AS photoData,mime_type AS mimeType FROM work_order_evidence WHERE id=? AND work_order_id=?').bind(c.req.param('evidenceId'),access.order.id).first() as {photoData:string;mimeType:string}|null;
+  const row=await c.env.DB.prepare('SELECT photo_data AS photoData,object_key AS objectKey,mime_type AS mimeType FROM work_order_evidence WHERE id=? AND work_order_id=?').bind(c.req.param('evidenceId'),access.order.id).first() as {photoData:string;objectKey:string|null;mimeType:string}|null;
   if(!row)return c.json({error:{code:'NOT_FOUND',message:'Фотоесеп табылмады'}},404);
+  if(row.objectKey && c.env.EVIDENCE_BUCKET){const object=await c.env.EVIDENCE_BUCKET.get(row.objectKey);if(!object)return c.json({error:{code:'PHOTO_MISSING',message:'Фото файлы қоймадан табылмады'}},404);return new Response(object.body,{headers:{'Content-Type':row.mimeType,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});}
   const encoded=String(row.photoData).split(',')[1]||'';
   const binary=Uint8Array.from(atob(encoded),ch=>ch.charCodeAt(0));
   return new Response(binary,{headers:{'Content-Type':row.mimeType,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
