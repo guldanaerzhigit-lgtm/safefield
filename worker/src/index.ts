@@ -7,6 +7,7 @@ import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
 import sessionRoutes from './routes/sessions';
 import alertRoutes from './routes/alerts';
+import adminRoutes from './routes/admin';
 const app = new Hono<{ Bindings: Env }>();
 app.use('*', logger());
 app.use('/api/*', cors({ origin: (origin, c) => { const allowed = (c.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((item: string) => item.trim()); return allowed.includes(origin) ? origin : ''; }, allowMethods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'], allowHeaders: ['Content-Type','Authorization'], maxAge: 600 }));
@@ -22,7 +23,7 @@ v1.get('/health', async (c) => {
     return c.json({ ok: false, service: 'safefield-api', database: 'unavailable' }, 503);
   }
 });
-v1.route('/auth', authRoutes); v1.route('/dashboard', dashboardRoutes); v1.route('/sessions', sessionRoutes); v1.route('/alerts', alertRoutes);
+v1.route('/auth', authRoutes); v1.route('/dashboard', dashboardRoutes); v1.route('/sessions', sessionRoutes); v1.route('/alerts', alertRoutes); v1.route('/admin', adminRoutes);
 app.route('/api/v1', v1);
 app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
 export default { fetch: app.fetch };
