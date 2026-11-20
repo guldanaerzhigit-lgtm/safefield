@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, MapPin, Plus, RefreshCw, ShieldCheck, Siren } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, MapPin, Plus, RefreshCw, ShieldAlert, ShieldCheck, Siren } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 
@@ -65,14 +65,14 @@ export function SessionsPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Сессияны құру мүмкін болмады'); }
     finally { setSaving(false); }
   }
-  async function runAction(session: SafetySession, action: 'start' | 'checkin' | 'sos' | 'complete') {
+  async function runAction(session: SafetySession, action: 'start' | 'checkin' | 'sos' | 'hidden-sos' | 'complete') {
     setError(''); setNotice('');
     try {
       if (action === 'sos' && !window.confirm('Диспетчерге шұғыл SOS сигналын жібересіз бе?')) return;
-      const location = action === 'checkin' || action === 'sos' ? await getLocation() : {};
-      const payload = action === 'checkin' ? { response: 'SAFE', ...location } : action === 'sos' ? { message: 'Шұғыл көмек қажет', ...location } : undefined;
-      await api('/sessions/' + session.id + '/' + action, { method: 'POST', ...(payload ? { body: JSON.stringify(payload) } : {}) });
-      const messages = { start: 'Жұмыс сессиясы басталды. Қауіпсіздікті растау уақыты жоспарланды.', checkin: 'Қауіпсіздік расталды. Келесі растау уақыты жоспарланды.', sos: 'SOS жіберілді. Қосымшаны жаппаңыз және компания нұсқаулығын орындаңыз.', complete: 'Жұмыс сессиясы аяқталды.' };
+      const location = action === 'checkin' || action === 'sos' || action === 'hidden-sos' ? await getLocation() : {};
+      const payload = action === 'checkin' ? { response: 'SAFE', ...location } : action === 'sos' || action === 'hidden-sos' ? { message: action === 'hidden-sos' ? 'Жасырын шұғыл көмек сигналы' : 'Шұғыл көмек қажет', hidden: action === 'hidden-sos', ...location } : undefined;
+      await api('/sessions/' + session.id + '/' + (action === 'hidden-sos' ? 'sos' : action), { method: 'POST', ...(payload ? { body: JSON.stringify(payload) } : {}) });
+      const messages = { start: 'Жұмыс сессиясы басталды. Қауіпсіздікті растау уақыты жоспарланды.', checkin: 'Қауіпсіздік расталды. Келесі растау уақыты жоспарланды.', sos: 'SOS жіберілді. Қосымшаны жаппаңыз және компания нұсқаулығын орындаңыз.', 'hidden-sos': 'Жасырын көмек сигналы жіберілді. Қауіпсіз жерге өтіңіз.', complete: 'Жұмыс сессиясы аяқталды.' };
       setNotice(messages[action]); await load();
     } catch (e) { setError(e instanceof Error ? e.message : 'Әрекет орындалмады'); }
   }
@@ -100,7 +100,7 @@ export function SessionsPage() {
         <div className="session-card-main"><div className="session-card-title"><div><h3>{session.title}</h3><span className={'session-status ' + session.status.toLowerCase()}>{session.status === 'PLANNED' ? 'Жоспарланған' : session.status === 'ACTIVE' ? 'Белсенді' : session.status === 'COMPLETED' ? 'Аяқталған' : session.status}</span></div></div><div className="session-meta"><span><MapPin size={14}/>{session.site_address}</span><span><Clock3 size={14}/>{formatDate(session.planned_start_at)} — {formatDate(session.planned_end_at)}</span><span><RefreshCw size={14}/>Check-in: {session.checkin_interval_minutes} мин.</span></div><small className="session-activity">{session.activity_name}</small></div>
         <div className="session-actions">
           {session.status === 'PLANNED' && <button className="create-session-btn" onClick={() => void runAction(session,'start')}>Жұмысты бастау</button>}
-          {session.status === 'ACTIVE' && <><button className="safe-checkin-btn" onClick={() => void runAction(session,'checkin')}><CheckCircle2 size={16}/>Қауіпсіздігім расталды</button><button className="sos-btn" onClick={() => void runAction(session,'sos')}><Siren size={16}/>SOS</button><button className="secondary-btn" onClick={() => void runAction(session,'complete')}>Аяқтау</button></>}
+          {session.status === 'ACTIVE' && <><button className="safe-checkin-btn" onClick={() => void runAction(session,'checkin')}><CheckCircle2 size={16}/>Қауіпсіздігім расталды</button><button className="sos-btn" onClick={() => void runAction(session,'sos')}><Siren size={16}/>SOS</button><button className="hidden-sos-btn" aria-label="Жасырын SOS жіберу" title="Жасырын SOS" onClick={() => void runAction(session,'hidden-sos')}><ShieldAlert size={16}/></button><button className="secondary-btn" onClick={() => void runAction(session,'complete')}>Аяқтау</button></>}
         </div>
       </article>)}</div>}
       <p className="sessions-disclaimer"><AlertTriangle size={14}/> Қосымша арқылы SOS жіберу үшін интернет қажет. Бұл компания бекіткен шұғыл байланыс арналарының орнына жүрмейді.</p>
