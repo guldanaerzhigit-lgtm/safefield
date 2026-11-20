@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, MapPin, Plus, RefreshCw, ShieldAlert, ShieldCheck, Siren } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { pendingSafetyEvents, queueSafetyEvent, removeSafetyEvent } from '../utils/offlineQueue';
 
 type SafetySession = {
   id: string; title: string; site_address: string; activity_name: string; status: string;
@@ -51,7 +52,9 @@ export function SessionsPage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Сессияларды жүктеу мүмкін болмады'); }
     finally { setLoading(false); }
   }
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); const sync=()=>{void flushOfflineQueue();}; window.addEventListener('online',sync); if(navigator.onLine)sync(); return()=>window.removeEventListener('online',sync); }, []);
+
+  async function flushOfflineQueue(){ if(!navigator.onLine)return; try{const events=await pendingSafetyEvents();let sent=0;for(const item of events){try{await api(item.path,{method:item.method,body:JSON.stringify(item.body)});await removeSafetyEvent(item.id);sent++;}catch{break;}}if(sent)setNotice(sent+' офлайн оқиға серверге жіберілді.');}catch(e){console.error('Офлайн кезекті синхрондау қатесі',e);} }
 
   async function createSession(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setError(''); setNotice('');
@@ -67,14 +70,20 @@ export function SessionsPage() {
   }
   async function runAction(session: SafetySession, action: 'start' | 'checkin' | 'sos' | 'hidden-sos' | 'complete') {
     setError(''); setNotice('');
+    if (action === 'sos' && !window.confirm('Диспетчерге шұғыл SOS сигналын жібересіз бе?')) return;
+    const location = action === 'start' || action === 'checkin' || action === 'sos' || action === 'hidden-sos' ? await getLocation() : {};
+    const payload = action === 'start' ? location : action === 'checkin' ? { response: 'SAFE', ...location } : action === 'sos' || action === 'hidden-sos' ? { message: action === 'hidden-sos' ? 'Жасырын шұғыл көмек сигналы' : 'Шұғыл көмек қажет', hidden: action === 'hidden-sos', ...location } : undefined;
+    const endpoint='/sessions/'+session.id+'/'+(action === 'hidden-sos' ? 'sos' : action);
     try {
-      if (action === 'sos' && !window.confirm('Диспетчерге шұғыл SOS сигналын жібересіз бе?')) return;
-      const location = action === 'start' || action === 'checkin' || action === 'sos' || action === 'hidden-sos' ? await getLocation() : {};
-      const payload = action === 'start' ? location : action === 'checkin' ? { response: 'SAFE', ...location } : action === 'sos' || action === 'hidden-sos' ? { message: action === 'hidden-sos' ? 'Жасырын шұғыл көмек сигналы' : 'Шұғыл көмек қажет', hidden: action === 'hidden-sos', ...location } : undefined;
-      await api('/sessions/' + session.id + '/' + (action === 'hidden-sos' ? 'sos' : action), { method: 'POST', ...(payload ? { body: JSON.stringify(payload) } : {}) });
+      await api(endpoint, { method: 'POST', ...(payload ? { body: JSON.stringify(payload) } : {}) });
       const messages = { start: 'Жұмыс сессиясы басталды. Қауіпсіздікті растау уақыты жоспарланды.', checkin: 'Қауіпсіздік расталды. Келесі растау уақыты жоспарланды.', sos: 'SOS жіберілді. Қосымшаны жаппаңыз және компания нұсқаулығын орындаңыз.', 'hidden-sos': 'Жасырын көмек сигналы жіберілді. Қауіпсіз жерге өтіңіз.', complete: 'Жұмыс сессиясы аяқталды.' };
       setNotice(messages[action]); await load();
-    } catch (e) { setError(e instanceof Error ? e.message : 'Әрекет орындалмады'); }
+    } catch (e) {
+      if ((action === 'checkin' || action === 'sos' || action === 'hidden-sos') && (!navigator.onLine || e instanceof TypeError)) {
+        try { await queueSafetyEvent(endpoint,payload||{}); setNotice(action==='checkin'?'Интернет жоқ. Қауіпсіздік растауы құрылғыда сақталды және байланыс қалпына келгенде жіберіледі.':'Интернет жоқ. SOS оқиғасы құрылғыда сақталды, байланыс қалпына келгенде жіберіледі.'); setError(''); }
+        catch { setError('Оқиғаны құрылғыда сақтау мүмкін болмады. Қауіпсіздік үшін телефон байланысын пайдаланыңыз.'); }
+      } else setError(e instanceof Error ? e.message : 'Әрекет орындалмады');
+    }
   }
 
   return <main className="sessions-page">
@@ -103,7 +112,7 @@ export function SessionsPage() {
           {session.status === 'ACTIVE' && <><button className="safe-checkin-btn" onClick={() => void runAction(session,'checkin')}><CheckCircle2 size={16}/>Қауіпсіздігім расталды</button><button className="sos-btn" onClick={() => void runAction(session,'sos')}><Siren size={16}/>SOS</button><button className="hidden-sos-btn" aria-label="Жасырын SOS жіберу" title="Жасырын SOS" onClick={() => void runAction(session,'hidden-sos')}><ShieldAlert size={16}/></button><button className="secondary-btn" onClick={() => void runAction(session,'complete')}>Аяқтау</button></>}
         </div>
       </article>)}</div>}
-      <p className="sessions-disclaimer"><AlertTriangle size={14}/> Қосымша арқылы SOS жіберу үшін интернет қажет. Бұл компания бекіткен шұғыл байланыс арналарының орнына жүрмейді.</p>
+      <p className="sessions-disclaimer"><AlertTriangle size={14}/> Check-in және SOS оқиғалары интернет болмаған кезде құрылғыда уақытша сақталады. Шұғыл жағдайда телефон арқылы да хабарласыңыз.</p>
     </section>
   </main>;
 }
