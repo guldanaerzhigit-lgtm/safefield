@@ -14,7 +14,7 @@ function labelStatus(status:string) {
 function labelType(type:string) {
   return ({SOS:'SOS',HIDDEN_SOS:'Жасырын SOS',MISSED_CHECKIN:'Уақытында расталмаған тексеру',RISK_ZONE:'Қауіпті аймақ',MANUAL:'Көмек сұрауы',SYSTEM:'Жүйелік дабыл'} as Record<string,string>)[type] || type;
 }
-function formatDate(value:string) { return new Intl.DateTimeFormat('ru-RU',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)); }
+function formatDate(value:string) { return new Intl.DateTimeFormat('kk-KZ',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)); }
 
 export function AlertsPage() {
   const user=useAuthStore(s=>s.user);
@@ -50,7 +50,7 @@ export function AlertsPage() {
   return <main className="sessions-page">
     <header className="sessions-top"><Link to="/" className="back-link"><ArrowLeft size={17}/> Басқару панеліне</Link><span className="sessions-brand"><ShieldCheck size={20}/> SAFEFIELD</span></header>
     <section className="sessions-content">
-      <div className="sessions-heading"><div><div className="eyebrow light">ҚАУІПСІЗДІК ОПЕРАЦИЯЛАРЫ / ОҚИҒАЛАР ОРТАЛЫҒЫ</div><h1>Дабылдар орталығы</h1><p>Далалық қызметкерлердің SOS сигналдары, уақытында расталмаған тексерулері және көмек сұраулары.</p></div><button className="refresh-btn" onClick={()=>void load()} aria-label="Обновить"><RefreshCw size={16}/></button></div>
+      <div className="sessions-heading"><div><div className="eyebrow light">ҚАУІПСІЗДІК ОПЕРАЦИЯЛАРЫ / ОҚИҒАЛАР ОРТАЛЫҒЫ</div><h1>Дабылдар орталығы</h1><p>Далалық қызметкерлердің SOS сигналдары, уақытында расталмаған тексерулері және көмек сұраулары.</p></div><button className="refresh-btn" onClick={()=>void load()} aria-label="Жаңарту"><RefreshCw size={16}/></button></div>
       {error&&<div className="api-warning"><AlertTriangle size={17}/><span>{error}</span></div>}
       {notice&&<div className="session-notice"><Check size={17}/><span>{notice}</span></div>}
       <div className="alerts-summary"><div><b>{alerts.filter(a=>['OPEN','ACKNOWLEDGED','IN_PROGRESS'].includes(a.status)).length}</b><span>Белсенді дабылдар</span></div><div><b>{alerts.filter(a=>a.priority==='CRITICAL'&&a.status!=='RESOLVED').length}</b><span>Критикалық</span></div><div><b>{alerts.filter(a=>a.status==='RESOLVED').length}</b><span>Шешілген</span></div></div>
