@@ -107,7 +107,7 @@ app.post('/:id/checkpoints/scan', async c => {
   if(user.id!==access.order.assignedTo || !['ACCEPTED','IN_PROGRESS','RETURNED'].includes(access.order.status))return c.json({error:{code:'FORBIDDEN',message:'Бақылау нүктесін тек тағайындалған қызметкер растай алады'}},403);
   const parsed=scanSchema.safeParse(await c.req.json().catch(()=>null));
   if(!parsed.success)return c.json({error:{code:'VALIDATION_ERROR',message:'QR коды дұрыс емес'}},400);
-  const cp=await c.env.DB.prepare('SELECT id,title FROM work_order_checkpoints WHERE code=? AND work_order_id=? AND is_active=1').bind(parsed.data.code.trim(),access.order.id).first() as {id:string;title:string}|null;
+  const cp=await c.env.DB.prepare('SELECT id,title,latitude,longitude,radius_meters AS radiusMeters FROM work_order_checkpoints WHERE code=? AND work_order_id=? AND is_active=1').bind(parsed.data.code.trim(),access.order.id).first() as {id:string;title:string;latitude:number|null;longitude:number|null;radiusMeters:number}|null;
   if(!cp)return c.json({error:{code:'CHECKPOINT_NOT_FOUND',message:'Бұл QR код тапсырманың бақылау нүктесіне тиесілі емес'}},404);
   try {
     await c.env.DB.prepare('INSERT INTO work_order_checkpoint_scans(id,checkpoint_id,work_order_id,employee_id,latitude,longitude,accuracy,scanned_at,result) VALUES(?,?,?,?,?,?,?, ?,\'VERIFIED\')')
