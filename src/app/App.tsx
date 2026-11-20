@@ -10,6 +10,7 @@ import { MonitoringPage } from '../pages/MonitoringPage';
 import { DispatchPage } from '../pages/DispatchPage';
 import { ZonesPage } from '../pages/ZonesPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
+import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { useAuthStore } from '../stores/authStore';
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
     <Route path="/dispatch" element={token ? <DispatchPage /> : <Navigate to="/login" replace />} />
     <Route path="/zones" element={token ? <ZonesPage /> : <Navigate to="/login" replace />} />
     <Route path="/notifications" element={token ? <NotificationsPage /> : <Navigate to="/login" replace />} />
+    <Route path="/analytics" element={token ? <AnalyticsPage /> : <Navigate to="/login" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>;
 }
