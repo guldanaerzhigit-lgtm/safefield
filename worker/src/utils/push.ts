@@ -27,7 +27,7 @@ async function encryptPayload(payload: string, p256dh: string, auth: string) {
   const clientPublic = decode(p256dh), authSecret = decode(auth);
   const clientKey = await crypto.subtle.importKey('raw', asBuffer(clientPublic), { name: 'ECDH', namedCurve: 'P-256' }, false, []);
   const serverKeys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']) as CryptoKeyPair;
-  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', $public: clientKey } as unknown as AlgorithmIdentifier, serverKeys.privateKey, 256));
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: clientKey } as unknown as AlgorithmIdentifier, serverKeys.privateKey, 256));
   const serverPublic = new Uint8Array(await crypto.subtle.exportKey('raw', serverKeys.publicKey));
   const keyInfo = concat(encoder.encode('WebPush: info\0'), clientPublic, serverPublic);
   const ikm = await hkdf(shared, authSecret, keyInfo, 32);
