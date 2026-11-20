@@ -81,8 +81,11 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
       false,
       ['deriveBits'],
     );
+    // Copy into a concrete ArrayBuffer to satisfy the Web Crypto BufferSource type.
+    const saltBuffer = new ArrayBuffer(salt.length);
+    new Uint8Array(saltBuffer).set(salt);
     const actual = new Uint8Array(await crypto.subtle.deriveBits(
-      { name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
+      { name: 'PBKDF2', hash: 'SHA-256', salt: saltBuffer, iterations },
       key,
       expected.length * 8,
     ));
