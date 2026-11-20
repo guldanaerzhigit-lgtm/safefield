@@ -13,9 +13,9 @@ app.get('/summary', async (c) => {
   if (user.role === 'EMPLOYEE') {
     sessionSql += ' AND employee_id=?'; alertSql += ' AND employee_id=?'; checkinSql += ' AND c.employee_id=?'; employeeSql = `SELECT COUNT(*) AS n FROM users WHERE id=? AND status='ACTIVE'`;
   } else if (user.role === 'SUPERVISOR') {
-    sessionSql += ' AND employee_id IN (SELECT id FROM users WHERE department_id=?)'; alertSql += ' AND employee_id IN (SELECT id FROM users WHERE department_id=?)'; checkinSql += ' AND c.employee_id IN (SELECT id FROM users WHERE department_id=?)'; employeeSql += ' AND department_id=?';
+    sessionSql += ' AND employee_id IN (SELECT id FROM users WHERE supervisor_id=?)'; alertSql += ' AND employee_id IN (SELECT id FROM users WHERE department_id=?)'; checkinSql += ' AND c.employee_id IN (SELECT id FROM users WHERE department_id=?)'; employeeSql += ' AND supervisor_id=?';
   }
-  const bind = user.role === 'EMPLOYEE' ? [user.id] : user.role === 'SUPERVISOR' ? [user.departmentId || ''] : [];
+  const bind = user.role === 'EMPLOYEE' ? [user.id] : user.role === 'SUPERVISOR' ? [user.id] : [];
   const [sessions,alerts,checkins,employees] = await Promise.all([c.env.DB.prepare(sessionSql).bind(...bind).first<{n:number}>(),c.env.DB.prepare(alertSql).bind(...bind).first<{n:number}>(),c.env.DB.prepare(checkinSql).bind(...bind).first<{n:number}>(),c.env.DB.prepare(employeeSql).bind(...bind).first<{n:number}>()]);
   return c.json({ summary: { activeSessions: sessions?.n ?? 0, openAlerts: alerts?.n ?? 0, overdueCheckins: checkins?.n ?? 0, activeEmployees: employees?.n ?? 0 } });
 });
