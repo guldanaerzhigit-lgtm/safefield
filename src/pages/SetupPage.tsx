@@ -27,7 +27,7 @@ export function SetupPage() {
   }
 
   return <main className="setup-shell">
-    <header className="setup-top"><Link to="/login"><ArrowLeft size={17}/> Ко входу</Link><div className="sessions-brand"><ShieldCheck size={20}/> SAFEFlELD</div></header>
+    <header className="setup-top"><Link to="/login"><ArrowLeft size={17}/> Ко входу</Link><div className="sessions-brand"><ShieldCheck size={20}/> SAFEFIELD</div></header>
     <section className="setup-card">
       <div className="setup-icon"><UserPlus size={22}/></div>
       {success ? <>
