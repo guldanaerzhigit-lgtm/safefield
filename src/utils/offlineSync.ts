@@ -1,0 +1,4 @@
+import { api } from '../services/api';
+import { pendingSafetyEvents, removeSafetyEvent } from './offlineQueue';
+let syncing=false;
+export function registerOfflineSync(){const sync=async()=>{if(!navigator.onLine||syncing)return;syncing=true;try{const events=await pendingSafetyEvents();for(const event of events){try{await api(event.path,{method:event.method,body:JSON.stringify(event.body)});await removeSafetyEvent(event.id);}catch{break;}}}catch(error){console.error('Офлайн оқиғаларды синхрондау қатесі',error);}finally{syncing=false;}};window.addEventListener('online',()=>void sync());window.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void sync();});if(navigator.onLine)void sync();}
