@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ShieldCheck, LockKeyhole, Mail, ArrowRight, Globe2, Activity } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 const copy = {
