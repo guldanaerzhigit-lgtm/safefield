@@ -48,6 +48,20 @@ async function getOwnedSession(c: Context<AppEnv>, id: string): Promise<OwnedSes
   return { session, error: null };
 }
 
+async function enqueueEscalations(c: Context<AppEnv>, alertId: string, firstDelayMinutes: number) {
+  const steps = [
+    { level: 1, role: 'SUPERVISOR', minutes: firstDelayMinutes },
+    { level: 2, role: 'DISPATCHER', minutes: firstDelayMinutes + 5 },
+    { level: 3, role: 'SAFETY_MANAGER', minutes: firstDelayMinutes + 10 }
+  ] as const;
+  for (const step of steps) {
+    const dueAt = new Date(Date.now() + step.minutes * 60_000).toISOString();
+    await c.env.DB.prepare(
+      "INSERT INTO safety_escalations (id,alert_id,level,target_role,status,due_at) VALUES (?,?,?,?,'PENDING',?)"
+    ).bind(crypto.randomUUID(), alertId, step.level, step.role, dueAt).run();
+  }
+}
+
 app.get('/', async c => {
   const user = c.get('user');
   const base = 'SELECT s.*, t.name AS activity_name FROM safety_sessions s JOIN safety_activity_types t ON t.id=s.activity_type_id';
@@ -129,9 +143,11 @@ app.post('/:id/checkin', async c => {
     ).bind(crypto.randomUUID(), c.get('user').id, session.id, value.latitude, value.longitude, now.toISOString()).run();
   }
   if (value.response === 'NEED_HELP') {
+    const alertId = crypto.randomUUID();
     await c.env.DB.prepare(
-      `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude) VALUES (?,?,?,'MANUAL','HIGH','OPEN','Employee requested assistance',?,?)`
-    ).bind(crypto.randomUUID(), session.id, c.get('user').id, value.latitude ?? null, value.longitude ?? null).run();
+      "INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude) VALUES (?,?,?,'MANUAL','HIGH','OPEN','Employee requested assistance',?,?)"
+    ).bind(alertId, session.id, c.get('user').id, value.latitude ?? null, value.longitude ?? null).run();
+    await enqueueEscalations(c, alertId, 2);
   }
   await c.env.DB.prepare(
     `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (?,?,?,?,?,?)`
@@ -151,6 +167,12 @@ app.post('/:id/sos', async c => {
   await c.env.DB.prepare(
     `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude,location_accuracy) VALUES (?,?,?,?,'CRITICAL','OPEN',?,?,?,?)`
   ).bind(id, session.id, c.get('user').id, value.hidden ? 'HIDDEN_SOS' : 'SOS', value.message || (value.hidden ? 'Hidden emergency alert' : 'Emergency assistance requested'), value.latitude ?? null, value.longitude ?? null, value.accuracy ?? null).run();
+  await enqueueEscalations(c, id, 0);
+  if (value.latitude != null && value.longitude != null) {
+    await c.env.DB.prepare(
+      "INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,recorded_at,source) VALUES (?,?,?,?,?,?,'GPS')"
+    ).bind(crypto.randomUUID(), c.get('user').id, session.id, value.latitude, value.longitude, new Date().toISOString()).run();
+  }
   await c.env.DB.prepare(
     `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (?,?,'SOS_CREATED','SAFETY_ALERT',?,?)`
   ).bind(crypto.randomUUID(), c.get('user').id, id, c.get('user').departmentId).run();
