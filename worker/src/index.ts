@@ -16,6 +16,8 @@ import zoneRoutes from './routes/zones';
 import analyticsRoutes from './routes/analytics';
 import workOrderRoutes from './routes/workOrders';
 import assetRoutes from './routes/assets';
+import profileRoutes from './routes/profile';
+import invitationRoutes from './routes/invitations';
 const app = new Hono<{ Bindings: Env }>();
 app.use('*', logger());
 app.use('/api/*', cors({ origin: (origin, c) => { const allowed = (c.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((item: string) => item.trim()); return allowed.includes(origin) ? origin : ''; }, allowMethods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'], allowHeaders: ['Content-Type','Authorization'], maxAge: 600 }));
