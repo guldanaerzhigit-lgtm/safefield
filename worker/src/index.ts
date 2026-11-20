@@ -9,7 +9,7 @@ import sessionRoutes from './routes/sessions';
 import alertRoutes from './routes/alerts';
 const app = new Hono<{ Bindings: Env }>();
 app.use('*', logger());
-app.use('/api/*', cors({ origin: (origin, c) => { const allowed = (c.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((item) => item.trim()); return allowed.includes(origin) ? origin : ''; }, allowMethods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'], allowHeaders: ['Content-Type','Authorization'], maxAge: 600 }));
+app.use('/api/*', cors({ origin: (origin, c) => { const allowed = (c.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((item: string) => item.trim()); return allowed.includes(origin) ? origin : ''; }, allowMethods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'], allowHeaders: ['Content-Type','Authorization'], maxAge: 600 }));
 app.onError(errorHandler);
 app.get('/health', (c) => c.json({ ok: true, service: 'safefield-api', version: 'v1', timestamp: new Date().toISOString() }));
 app.get('/health/ready', async (c) => { try { await c.env.DB.prepare('SELECT 1 AS ok').first(); return c.json({ ok: true, database: 'connected' }); } catch { return c.json({ ok: false, database: 'unavailable' }, 503); } });
