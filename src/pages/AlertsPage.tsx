@@ -25,13 +25,13 @@ export function AlertsPage() {
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
   const [busy,setBusy]=useState('');
-  async function load() {
-    setLoading(true);setError('');
+  async function load(silent=false) {
+    if(!silent)setLoading(true);setError('');
     try { const result=await api<{alerts:SafetyAlert[]}>('/alerts');setAlerts(result.alerts); }
     catch(e){setError(e instanceof Error?e.message:'Дабылдарды жүктеу мүмкін болмады');}
-    finally{setLoading(false);}
+    finally{if(!silent)setLoading(false);}
   }
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{void load();const timer=window.setInterval(()=>void load(true),15000);return()=>window.clearInterval(timer);},[]);
   async function act(alert:SafetyAlert,action:'acknowledge'|'resolve') {
     let body: string | undefined;
     if(action==='resolve') {
