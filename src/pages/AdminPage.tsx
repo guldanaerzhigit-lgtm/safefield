@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, ArrowLeft, Building2, Check, ChevronDown, CircleUserRound, Plus, RefreshCw, Shield, UserPlus, Users } from 'lucide-react';
+import type { FormEvent } from 'react';
+import { Activity, ArrowLeft, Building2, Check, CircleUserRound, Plus, RefreshCw, Shield, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
@@ -16,7 +17,7 @@ export function AdminPage(){
  const [depForm,setDepForm]=useState({name:'',code:'',parentId:''});
  const load=useCallback(async()=>{setLoading(true);setError('');try{const [u,d,a,o]=await Promise.all([api<{users:UserRow[]}>('/admin/users'),api<{departments:Department[]}>('/admin/departments'),api<{logs:AuditRow[]}>('/admin/audit'),api<{overview:typeof overview}>('/admin/overview')]);setUsers(u.users);setDepartments(d.departments);setLogs(a.logs);setOverview(o.overview);}catch(e){setError(e instanceof Error?e.message:'Не удалось загрузить данные');}finally{setLoading(false);}},[]);
  useEffect(()=>{void load();},[load]);
- const createUser=async(e:React.FormEvent)=>{e.preventDefault();setError('');setNotice('');try{await api('/admin/users',{method:'POST',body:JSON.stringify({...form,departmentId:form.departmentId||null,supervisorId:form.supervisorId||null})});setNotice('Сотрудник создан. Передайте ему email и пароль безопасным способом.');setShowUser(false);setForm({fullName:'',email:'',phone:'',password:'',role:'EMPLOYEE',departmentId:'',supervisorId:''});await load();}catch(err){setError(err instanceof Error?err.message:'Не удалось создать сотрудника');}};
+ const createUser=async(e:FormEvent)=>{e.preventDefault();setError('');setNotice('');try{await api('/admin/users',{method:'POST',body:JSON.stringify({...form,departmentId:form.departmentId||null,supervisorId:form.supervisorId||null})});setNotice('Сотрудник создан. Передайте ему email и пароль безопасным способом.');setShowUser(false);setForm({fullName:'',email:'',phone:'',password:'',role:'EMPLOYEE',departmentId:'',supervisorId:''});await load();}catch(err){setError(err instanceof Error?err.message:'Не удалось создать сотрудника');}};
  const createDepartment=async(e:React.FormEvent)=>{e.preventDefault();setError('');try{await api('/admin/departments',{method:'POST',body:JSON.stringify({...depForm,parentId:depForm.parentId||null})});setNotice('Подразделение создано.');setShowDepartment(false);setDepForm({name:'',code:'',parentId:''});await load();}catch(err){setError(err instanceof Error?err.message:'Не удалось создать подразделение');}};
  const updateUser=async(id:string,patch:Partial<UserRow>)=>{setError('');try{await api('/admin/users/'+id,{method:'PATCH',body:JSON.stringify(patch)});setNotice('Изменения пользователя сохранены.');await load();}catch(err){setError(err instanceof Error?err.message:'Не удалось изменить пользователя');}};
  const toggleDepartment=async(d:Department)=>{try{await api('/admin/departments/'+d.id,{method:'PATCH',body:JSON.stringify({isActive:!d.isActive})});setNotice('Статус подразделения обновлён.');await load();}catch(err){setError(err instanceof Error?err.message:'Не удалось обновить подразделение');}};
