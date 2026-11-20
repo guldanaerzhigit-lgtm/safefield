@@ -34,3 +34,5 @@
 
 .monitor-refresh{display:flex;align-items:center;gap:12px}.monitor-refresh small{font-size:9px;color:#8a98a9}
 @media(max-width:600px){.monitor-refresh{width:100%;justify-content:space-between}}
+
+.hidden-sos-btn{width:40px;height:40px;display:inline-grid;place-items:center;border:1px solid #d9e2ec;border-radius:8px;background:#f7f9fc;color:#667a92}.hidden-sos-btn:hover{background:#eaf0f7;color:#294f78}.hidden-sos-btn:focus-visible{outline:3px solid #6da7dc;outline-offset:2px}
