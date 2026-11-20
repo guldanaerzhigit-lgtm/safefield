@@ -260,6 +260,8 @@ app.post('/login', async c => {
       fullName: row.full_name,
       role: row.role,
       departmentName: row.department_name,
+      departmentId: row.department_id,
+      supervisorId: row.supervisor_id,
     },
   });
 });
