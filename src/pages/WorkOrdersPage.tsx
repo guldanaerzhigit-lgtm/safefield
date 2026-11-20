@@ -23,6 +23,7 @@ export function WorkOrdersPage(){
  const [orders,setOrders]=useState<Order[]>([]),[assignees,setAssignees]=useState<Assignee[]>([]),[assets,setAssets]=useState<AssetOption[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [showCreate,setShowCreate]=useState(false),[detail,setDetail]=useState<Detail|null>(null),[busy,setBusy]=useState(false);
  const [title,setTitle]=useState(''),[description,setDescription]=useState(''),[siteAddress,setSiteAddress]=useState(''),[assignedTo,setAssignedTo]=useState(''),[priority,setPriority]=useState('MEDIUM'),[dueAt,setDueAt]=useState(''),[checkpointTitles,setCheckpointTitles]=useState('');
+ const [assetId,setAssetId]=useState('');
  const [scanCode,setScanCode]=useState(''),[photoType,setPhotoType]=useState('BEFORE');const [history,setHistory]=useState<HistoryEvent[]>([]);
  const [checkpointLat,setCheckpointLat]=useState(''),[checkpointLng,setCheckpointLng]=useState(''),[checkpointRadius,setCheckpointRadius]=useState('150');
  const [cameraOpen,setCameraOpen]=useState(false),[cameraError,setCameraError]=useState('');
