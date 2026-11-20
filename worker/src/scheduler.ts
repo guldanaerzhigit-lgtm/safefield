@@ -9,7 +9,7 @@ async function processEscalations(env:SchedulerEnv,now:string){
  for(const item of due.results){
   let recipients:{id:string}[]=[];
   if(item.target_role==='SUPERVISOR'&&item.supervisor_id)recipients=[{id:item.supervisor_id}];
-  else recipients=(await env.DB.prepare(`SELECT u.id FROM users u JOIN roles r ON r.id=u.role_id WHERE r.code=? AND u.status='ACTIVE' AND (?='ADMIN' OR u.department_id=? OR ?='DISPATCHER') LIMIT 100`).bind(item.target_role,item.target_role,item.department_id,item.target_role).all<{id:string}>()).results;
+  else recipients=(await env.DB.prepare(`SELECT u.id FROM users u JOIN roles r ON r.id=u.role_id WHERE r.code=? AND u.status='ACTIVE' AND (? IN ('ADMIN','DISPATCHER','SAFETY_MANAGER') OR u.department_id=?) LIMIT 100`).bind(item.target_role,item.department_id).all<{id:string}>()).results;
   const ids=[...new Set(recipients.map(r=>r.id))];
   if(!ids.length){waiting++;continue;}
   let delivered=0;
