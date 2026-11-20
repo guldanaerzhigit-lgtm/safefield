@@ -14,7 +14,7 @@ const createSchema = z.object({
   assignedTo: z.string().min(1),
   dueAt: z.iso.datetime().nullable().optional(),
   priority: z.enum(['LOW','MEDIUM','HIGH','CRITICAL']).default('MEDIUM'),
-  checkpoints: z.array(z.object({ title: z.string().trim().min(2).max(120), siteAddress: z.string().max(500).optional(), latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional() })).max(20).default([])
+  checkpoints: z.array(z.object({ title: z.string().trim().min(2).max(120), siteAddress: z.string().max(500).optional(), latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(), radiusMeters: z.number().int().min(10).max(2000).optional() })).max(20).default([])
 });
 const transitionSchema = z.object({ action: z.enum(['accept','start','submit','complete','return','cancel']), note: z.string().max(1000).optional() });
 const scanSchema = z.object({ code: z.string().min(8).max(100), latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(), accuracy: z.number().min(0).max(10000).nullable().optional() });
@@ -64,8 +64,8 @@ app.post('/', async c => {
     await c.env.DB.prepare('INSERT INTO work_orders(id,code,title,description,site_address,department_id,assigned_to,created_by,due_at,priority) VALUES(?,?,?,?,?,?,?,?,?,?)')
       .bind(id,code,d.title,d.description,d.siteAddress,assignee.departmentId,d.assignedTo,user.id,d.dueAt||null,d.priority).run();
     for(const cp of d.checkpoints){
-      await c.env.DB.prepare('INSERT INTO work_order_checkpoints(id,work_order_id,code,title,site_address,latitude,longitude) VALUES(?,?,?,?,?,?,?)')
-        .bind(crypto.randomUUID(),id,'SFC-'+crypto.randomUUID().replaceAll('-','').slice(0,18).toUpperCase(),cp.title,cp.siteAddress||d.siteAddress,cp.latitude??null,cp.longitude??null).run();
+      await c.env.DB.prepare('INSERT INTO work_order_checkpoints(id,work_order_id,code,title,site_address,latitude,longitude,radius_meters) VALUES(?,?,?,?,?,?,?,?)')
+        .bind(crypto.randomUUID(),id,'SFC-'+crypto.randomUUID().replaceAll('-','').slice(0,18).toUpperCase(),cp.title,cp.siteAddress||d.siteAddress,cp.latitude??null,cp.longitude??null,cp.radiusMeters??150).run();
     }
   } catch { return c.json({error:{code:'CREATE_FAILED',message:'Тапсырманы құру мүмкін болмады'}},400); }
   await audit(c,'WORK_ORDER_CREATED',id,assignee.departmentId);
