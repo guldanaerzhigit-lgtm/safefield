@@ -8,7 +8,7 @@ app.get('/summary', async (c) => {
   const user = c.get('user');
   let sessionSql = `SELECT COUNT(*) AS n FROM safety_sessions WHERE status='ACTIVE'`;
   let alertSql = `SELECT COUNT(*) AS n FROM safety_alerts WHERE status IN ('OPEN','ACKNOWLEDGED','IN_PROGRESS')`;
-  let checkinSql = `SELECT COUNT(*) AS n FROM safety_checkins WHERE responded_at IS NULL AND due_at < strftime('%Y-%m-%dT%H:%M:%fZ','now')`;
+  let checkinSql = `SELECT COUNT(*) AS n FROM safety_checkins c JOIN safety_sessions s ON s.id=c.session_id WHERE c.responded_at IS NULL AND c.due_at < strftime('%Y-%m-%dT%H:%M:%fZ','now') AND s.status='ACTIVE'`;
   let employeeSql = `SELECT COUNT(*) AS n FROM users WHERE status='ACTIVE'`;
   if (user.role === 'EMPLOYEE') {
     sessionSql += ' AND employee_id=?'; alertSql += ' AND employee_id=?'; checkinSql += ' AND c.employee_id=?'; employeeSql = `SELECT COUNT(*) AS n FROM users WHERE id=? AND status='ACTIVE'`;
