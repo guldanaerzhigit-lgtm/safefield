@@ -26,7 +26,7 @@ export default {
 
       const alertId = crypto.randomUUID();
       await env.DB.prepare(
-        "INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message) VALUES (?,?,?,'MISSED_CHECKIN','HIGH','OPEN','Scheduled safety check-in was missed')"
+        "INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message) VALUES (?,?,?,'MISSED_CHECKIN','HIGH','OPEN','Қызметкер белгіленген уақытта қауіпсіздігін растамады')"
       ).bind(alertId, item.session_id, item.employee_id).run();
 
       const steps = [
