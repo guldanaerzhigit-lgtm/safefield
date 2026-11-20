@@ -14,6 +14,7 @@ function labelStatus(status:string) {
 function labelType(type:string) {
   return ({SOS:'SOS',HIDDEN_SOS:'Жасырын SOS',MISSED_CHECKIN:'Уақытында расталмаған тексеру',RISK_ZONE:'Қауіпті аймақ',MANUAL:'Көмек сұрауы',SYSTEM:'Жүйелік дабыл'} as Record<string,string>)[type] || type;
 }
+function decodeVapidKey(value:string){const normalized=value.replace(/-/g,'+').replace(/_/g,'/');const raw=atob(normalized+'='.repeat((4-normalized.length%4)%4));return Uint8Array.from(raw,ch=>ch.charCodeAt(0));}
 function formatDate(value:string) { return new Intl.DateTimeFormat('kk-KZ',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)); }
 
 export function AlertsPage() {
@@ -25,6 +26,7 @@ export function AlertsPage() {
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
   const [busy,setBusy]=useState('');
+  const [pushState,setPushState]=useState<'idle'|'enabled'|'unsupported'>('idle');
   async function load(silent=false) {
     if(!silent)setLoading(true);setError('');
     try { const result=await api<{alerts:SafetyAlert[]}>('/alerts');setAlerts(result.alerts); }
@@ -32,6 +34,7 @@ export function AlertsPage() {
     finally{if(!silent)setLoading(false);}
   }
   useEffect(()=>{void load();const timer=window.setInterval(()=>void load(true),15000);return()=>window.clearInterval(timer);},[]);
+  async function enablePush(){setError('');try{if(!('serviceWorker'in navigator)||!('PushManager'in window)){setPushState('unsupported');return;}const permission=await Notification.requestPermission();if(permission!=='granted')throw new Error('Хабарлама жіберуге браузер рұқсатын беріңіз.');const key=await api<{publicKey:string}>('/notifications/public-key');const registration=await navigator.serviceWorker.ready;let subscription=await registration.pushManager.getSubscription();if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:decodeVapidKey(key.publicKey) as BufferSource});await api('/notifications/subscribe',{method:'POST',body:JSON.stringify(subscription.toJSON())});setPushState('enabled');setNotice('Push хабарламалары осы құрылғыда қосылды.');}catch(e){setError(e instanceof Error?e.message:'Push хабарламасын қосу мүмкін болмады');}}
   async function act(alert:SafetyAlert,action:'acknowledge'|'resolve') {
     let body: string | undefined;
     if(action==='resolve') {
@@ -50,7 +53,7 @@ export function AlertsPage() {
   return <main className="sessions-page">
     <header className="sessions-top"><Link to="/" className="back-link"><ArrowLeft size={17}/> Басқару панеліне</Link><span className="sessions-brand"><ShieldCheck size={20}/> SAFEFIELD</span></header>
     <section className="sessions-content">
-      <div className="sessions-heading"><div><div className="eyebrow light">ҚАУІПСІЗДІК ОПЕРАЦИЯЛАРЫ / ОҚИҒАЛАР ОРТАЛЫҒЫ</div><h1>Дабылдар орталығы</h1><p>Далалық қызметкерлердің SOS сигналдары, қауіпті аймақ ескертулері және көмек сұраулары. Жаңа дабылдар әр 15 секунд сайын автоматты жаңартылады.</p></div><button className="refresh-btn" onClick={()=>void load()} aria-label="Жаңарту"><RefreshCw size={16}/></button></div>
+      <div className="sessions-heading"><div><div className="eyebrow light">ҚАУІПСІЗДІК ОПЕРАЦИЯЛАРЫ / ОҚИҒАЛАР ОРТАЛЫҒЫ</div><h1>Дабылдар орталығы</h1><p>Далалық қызметкерлердің SOS сигналдары, қауіпті аймақ ескертулері және көмек сұраулары. Жаңа дабылдар әр 15 секунд сайын автоматты жаңартылады.</p></div><button className="secondary-btn" onClick={()=>void enablePush()} disabled={pushState==='enabled'}>{pushState==='enabled'?'Push қосулы':'Push хабарламасын қосу'}</button><button className="refresh-btn" onClick={()=>void load()} aria-label="Жаңарту"><RefreshCw size={16}/></button></div>
       {error&&<div className="api-warning"><AlertTriangle size={17}/><span>{error}</span></div>}
       {notice&&<div className="session-notice"><Check size={17}/><span>{notice}</span></div>}
       <div className="alerts-summary"><div><b>{alerts.filter(a=>['OPEN','ACKNOWLEDGED','IN_PROGRESS'].includes(a.status)).length}</b><span>Белсенді дабылдар</span></div><div><b>{alerts.filter(a=>a.priority==='CRITICAL'&&a.status!=='RESOLVED').length}</b><span>Аса маңызды</span></div><div><b>{alerts.filter(a=>a.status==='RESOLVED').length}</b><span>Шешілген</span></div></div>
