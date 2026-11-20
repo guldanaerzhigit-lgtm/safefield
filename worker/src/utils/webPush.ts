@@ -23,7 +23,7 @@ export async function sendWebPush(subscription:{endpoint:string;p256dh:string;au
  const serverKey=ephemeral.publicKey as CryptoKey;
  const privateKey=ephemeral.privateKey as CryptoKey;
  const serverPublic=new Uint8Array(await crypto.subtle.exportKey('raw',serverKey) as ArrayBuffer);
- const shared=new Uint8Array(await crypto.subtle.deriveBits({name:'ECDH',public:receiver} as unknown as AlgorithmIdentifier,privateKey,256));
+ const shared=new Uint8Array(await crypto.subtle.deriveBits({name:'ECDH',public:receiver} as any,privateKey,256));
  const authPrk=await hkdfExtract(authSecret,shared);
  const keyInfo=concat(enc.encode('WebPush: info\0'),clientPublic,serverPublic);
  const ikm=await hkdfExpand(authPrk,keyInfo,32);
