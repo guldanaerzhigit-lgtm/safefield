@@ -159,7 +159,10 @@ app.post('/:id/checkin', async c => {
      WHERE id=(SELECT id FROM safety_checkins WHERE session_id=? AND employee_id=? AND responded_at IS NULL ORDER BY due_at ASC LIMIT 1)
        AND responded_at IS NULL RETURNING id`
   ).bind(now.toISOString(), value.response, value.latitude ?? null, value.longitude ?? null, session.id, c.get('user').id).first<{ id: string }>();
-  if (!answered) return c.json({ error: { code: 'CHECKIN_NOT_SCHEDULED', message: 'Бұл сессияда күтілген растау жоқ' } }, 409);
+  if (!answered && !value.clientEventId) return c.json({ error: { code: 'CHECKIN_NOT_SCHEDULED', message: 'Бұл сессияда күтілген растау жоқ' } }, 409);
+  if (!answered && value.clientEventId) {
+    await c.env.DB.prepare(`INSERT INTO safety_checkins (id,session_id,employee_id,due_at,responded_at,response,latitude,longitude) VALUES (?,?,?,?,?,?,?,?)`).bind(crypto.randomUUID(),session.id,c.get('user').id,now.toISOString(),now.toISOString(),value.response,value.latitude??null,value.longitude??null).run();
+  }
   await c.env.DB.prepare(
     `INSERT INTO safety_checkins (id,session_id,employee_id,due_at) VALUES (?,?,?,?)`
   ).bind(crypto.randomUUID(), session.id, c.get('user').id, nextDue).run();
