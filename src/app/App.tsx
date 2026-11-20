@@ -5,6 +5,7 @@ import { SessionsPage } from '../pages/SessionsPage';
 import { SetupPage } from '../pages/SetupPage';
 import { AlertsPage } from '../pages/AlertsPage';
 import { AdminPage } from '../pages/AdminPage';
+import { TeamPage } from '../pages/TeamPage';
 import { useAuthStore } from '../stores/authStore';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
     <Route path="/sessions" element={token ? <SessionsPage /> : <Navigate to="/login" replace />} />
     <Route path="/alerts" element={token ? <AlertsPage /> : <Navigate to="/login" replace />} />
     <Route path="/admin" element={token ? <AdminPage /> : <Navigate to="/login" replace />} />
+    <Route path="/team" element={token ? <TeamPage /> : <Navigate to="/login" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>;
 }
