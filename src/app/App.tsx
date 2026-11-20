@@ -12,6 +12,7 @@ import { ZonesPage } from '../pages/ZonesPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { AnalyticsPage } from '../pages/AnalyticsPage';
 import { WorkOrdersPage } from '../pages/WorkOrdersPage';
+import { AssetsPage } from '../pages/AssetsPage';
 import { useAuthStore } from '../stores/authStore';
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
     <Route path="/notifications" element={token ? <NotificationsPage /> : <Navigate to="/login" replace />} />
     <Route path="/analytics" element={token ? <AnalyticsPage /> : <Navigate to="/login" replace />} />
     <Route path="/work-orders" element={token ? <WorkOrdersPage /> : <Navigate to="/login" replace />} />
+    <Route path="/assets" element={token ? <AssetsPage /> : <Navigate to="/login" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>;
 }
