@@ -17,7 +17,7 @@ const createSchema = z.object({
   plannedEndAt: z.iso.datetime(),
   checkinIntervalMinutes: z.number().int().min(5).max(240).default(30),
   supervisorId: z.string().nullable().optional()
-}).refine(v => new Date(v.plannedEndAt) > new Date(v.plannedStartAt), 'End must be after start');
+}).refine(v => new Date(v.plannedEndAt) > new Date(v.plannedStartAt), 'Аяқталу уақыты басталу уақытынан кейін болуы керек');
 
 const checkinSchema = z.object({
   response: z.enum(['SAFE', 'NEED_HELP']),
@@ -41,9 +41,9 @@ async function getOwnedSession(c: Context<AppEnv>, id: string): Promise<OwnedSes
   const session = await c.env.DB.prepare(
     'SELECT id, employee_id, status, checkin_interval_minutes FROM safety_sessions WHERE id=?'
   ).bind(id).first<{ id: string; employee_id: string; status: string; checkin_interval_minutes: number }>();
-  if (!session) return { session: null, error: c.json({ error: { code: 'NOT_FOUND', message: 'Safety session not found' } }, 404) };
+  if (!session) return { session: null, error: c.json({ error: { code: 'NOT_FOUND', message: 'Қауіпсіздік сессиясы табылмады' } }, 404) };
   if (session.employee_id !== user.id && user.role !== 'ADMIN') {
-    return { session: null, error: c.json({ error: { code: 'FORBIDDEN', message: 'This session belongs to another employee' } }, 403) };
+    return { session: null, error: c.json({ error: { code: 'FORBIDDEN', message: 'Бұл сессия басқа қызметкерге тиесілі' } }, 403) };
   }
   return { session, error: null };
 }
@@ -69,7 +69,7 @@ app.get('/', async c => {
   if (user.role === 'EMPLOYEE') {
     stmt = c.env.DB.prepare(base + ' WHERE s.employee_id=? ORDER BY s.created_at DESC LIMIT 100').bind(user.id);
   } else if (user.role === 'SUPERVISOR') {
-    stmt = c.env.DB.prepare(base + ' JOIN users e ON e.id=s.employee_id WHERE e.department_id=? ORDER BY s.created_at DESC LIMIT 200').bind(user.departmentId || '');
+    stmt = c.env.DB.prepare(base + ' JOIN users e ON e.id=s.employee_id WHERE e.supervisor_id=? ORDER BY s.created_at DESC LIMIT 200').bind(user.departmentId || '');
   } else {
     stmt = c.env.DB.prepare(base + ' ORDER BY s.created_at DESC LIMIT 200');
   }
@@ -80,13 +80,13 @@ app.get('/', async c => {
 app.post('/', async c => {
   const user = c.get('user');
   if (user.role !== 'EMPLOYEE' && user.role !== 'ADMIN') {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Only an employee can create their own safety session' } }, 403);
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Жұмыс сессиясын тек қызметкер өзі құра алады' } }, 403);
   }
   const parsed = createSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message || 'Invalid payload' } }, 400);
+  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message || 'Деректер дұрыс толтырылмаған' } }, 400);
   const value = parsed.data;
   const activity = await c.env.DB.prepare('SELECT id FROM safety_activity_types WHERE id=? AND is_active=1').bind(value.activityTypeId).first();
-  if (!activity) return c.json({ error: { code: 'INVALID_ACTIVITY_TYPE', message: 'Activity type not found' } }, 400);
+  if (!activity) return c.json({ error: { code: 'INVALID_ACTIVITY_TYPE', message: 'Қызмет түрі табылмады' } }, 400);
   const id = crypto.randomUUID();
   await c.env.DB.prepare(
     `INSERT INTO safety_sessions (id,employee_id,supervisor_id,activity_type_id,title,site_address,site_lat,site_lng,planned_start_at,planned_end_at,checkin_interval_minutes,status)
@@ -102,13 +102,13 @@ app.post('/:id/start', async c => {
   const owned = await getOwnedSession(c, c.req.param('id'));
   if (owned.error) return owned.error;
   const session = owned.session;
-  if (session.status !== 'PLANNED') return c.json({ error: { code: 'INVALID_STATE', message: 'Only planned sessions can be started' } }, 409);
+  if (session.status !== 'PLANNED') return c.json({ error: { code: 'INVALID_STATE', message: 'Тек жоспарланған сессияны бастауға болады' } }, 409);
   const now = new Date();
   const due = new Date(now.getTime() + session.checkin_interval_minutes * 60_000).toISOString();
   const update = await c.env.DB.prepare(
     `UPDATE safety_sessions SET status='ACTIVE',started_at=?,updated_at=? WHERE id=? AND status='PLANNED'`
   ).bind(now.toISOString(), now.toISOString(), session.id).run();
-  if (!update.meta.changes) return c.json({ error: { code: 'INVALID_STATE', message: 'Session state changed; refresh and try again' } }, 409);
+  if (!update.meta.changes) return c.json({ error: { code: 'INVALID_STATE', message: 'Сессия күйі өзгерді. Бетті жаңартып, қайта көріңіз' } }, 409);
   await c.env.DB.prepare(
     `INSERT INTO safety_checkins (id,session_id,employee_id,due_at) VALUES (?,?,?,?)`
   ).bind(crypto.randomUUID(), session.id, c.get('user').id, due).run();
@@ -122,9 +122,9 @@ app.post('/:id/checkin', async c => {
   const owned = await getOwnedSession(c, c.req.param('id'));
   if (owned.error) return owned.error;
   const session = owned.session!;
-  if (session.status !== 'ACTIVE') return c.json({ error: { code: 'INVALID_STATE', message: 'Check-in is available only during an active session' } }, 409);
+  if (session.status !== 'ACTIVE') return c.json({ error: { code: 'INVALID_STATE', message: 'Қауіпсіздікті растау тек белсенді сессия кезінде қолжетімді' } }, 409);
   const parsed = checkinSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Choose SAFE or NEED_HELP and provide valid coordinates' } }, 400);
+  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Қауіпсіз немесе көмек қажет екенін таңдаңыз және координаттарды дұрыс енгізіңіз' } }, 400);
   const value = parsed.data;
   const now = new Date();
   const nextDue = new Date(now.getTime() + session.checkin_interval_minutes * 60_000).toISOString();
@@ -133,7 +133,7 @@ app.post('/:id/checkin', async c => {
      WHERE id=(SELECT id FROM safety_checkins WHERE session_id=? AND employee_id=? AND responded_at IS NULL ORDER BY due_at ASC LIMIT 1)
        AND responded_at IS NULL RETURNING id`
   ).bind(now.toISOString(), value.response, value.latitude ?? null, value.longitude ?? null, session.id, c.get('user').id).first<{ id: string }>();
-  if (!answered) return c.json({ error: { code: 'CHECKIN_NOT_SCHEDULED', message: 'No pending check-in exists for this session' } }, 409);
+  if (!answered) return c.json({ error: { code: 'CHECKIN_NOT_SCHEDULED', message: 'Бұл сессияда күтілген растау жоқ' } }, 409);
   await c.env.DB.prepare(
     `INSERT INTO safety_checkins (id,session_id,employee_id,due_at) VALUES (?,?,?,?)`
   ).bind(crypto.randomUUID(), session.id, c.get('user').id, nextDue).run();
@@ -145,7 +145,7 @@ app.post('/:id/checkin', async c => {
   if (value.response === 'NEED_HELP') {
     const alertId = crypto.randomUUID();
     await c.env.DB.prepare(
-      "INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude) VALUES (?,?,?,'MANUAL','HIGH','OPEN','Employee requested assistance',?,?)"
+      "INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude) VALUES (?,?,?,'MANUAL','HIGH','OPEN','Қызметкер көмек сұрады',?,?)"
     ).bind(alertId, session.id, c.get('user').id, value.latitude ?? null, value.longitude ?? null).run();
     await enqueueEscalations(c, alertId, 2);
   }
@@ -159,14 +159,14 @@ app.post('/:id/sos', async c => {
   const owned = await getOwnedSession(c, c.req.param('id'));
   if (owned.error) return owned.error;
   const session = owned.session!;
-  if (!['ACTIVE', 'PLANNED'].includes(session.status)) return c.json({ error: { code: 'INVALID_STATE', message: 'SOS cannot be created for a closed session' } }, 409);
+  if (!['ACTIVE', 'PLANNED'].includes(session.status)) return c.json({ error: { code: 'INVALID_STATE', message: 'Жабылған сессия үшін SOS жіберу мүмкін емес' } }, 409);
   const parsed = sosSchema.safeParse(await c.req.json().catch(() => ({})));
-  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid SOS payload' } }, 400);
+  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'SOS деректері дұрыс емес' } }, 400);
   const value = parsed.data;
   const id = crypto.randomUUID();
   await c.env.DB.prepare(
     `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude,location_accuracy) VALUES (?,?,?,?,'CRITICAL','OPEN',?,?,?,?)`
-  ).bind(id, session.id, c.get('user').id, value.hidden ? 'HIDDEN_SOS' : 'SOS', value.message || (value.hidden ? 'Hidden emergency alert' : 'Emergency assistance requested'), value.latitude ?? null, value.longitude ?? null, value.accuracy ?? null).run();
+  ).bind(id, session.id, c.get('user').id, value.hidden ? 'HIDDEN_SOS' : 'SOS', value.message || (value.hidden ? 'Жасырын шұғыл көмек сигналы' : 'Шұғыл көмек қажет'), value.latitude ?? null, value.longitude ?? null, value.accuracy ?? null).run();
   await enqueueEscalations(c, id, 0);
   if (value.latitude != null && value.longitude != null) {
     await c.env.DB.prepare(
@@ -183,7 +183,7 @@ app.post('/:id/complete', async c => {
   const owned = await getOwnedSession(c, c.req.param('id'));
   if (owned.error) return owned.error;
   const session = owned.session!;
-  if (!['ACTIVE', 'PLANNED', 'PAUSED'].includes(session.status)) return c.json({ error: { code: 'INVALID_STATE', message: 'Session is already closed' } }, 409);
+  if (!['ACTIVE', 'PLANNED', 'PAUSED'].includes(session.status)) return c.json({ error: { code: 'INVALID_STATE', message: 'Сессия аяқталған' } }, 409);
   const now = new Date().toISOString();
   await c.env.DB.prepare(
     `UPDATE safety_sessions SET status='COMPLETED',ended_at=?,updated_at=? WHERE id=?`
