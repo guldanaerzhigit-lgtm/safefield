@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, ClipboardList, Plus, RefreshCw, MapPin, Camera, QrCode, CheckCircle2, Clock3, AlertTriangle, X, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Plus, RefreshCw, MapPin, QrCode, CheckCircle2, Clock3, AlertTriangle, X, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { api } from '../services/api';
