@@ -1,0 +1,10 @@
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { authMiddleware, type AuthVariables } from '../middleware/auth';
+import type { Env } from '../types';
+const app=new Hono<{Bindings:Env;Variables:AuthVariables}>();app.use('*',authMiddleware);
+const schema=z.object({endpoint:z.string().url().max(2048),keys:z.object({p256dh:z.string().min(80).max(200),auth:z.string().min(20).max(100)})});
+app.get('/public-key',c=>{if(!c.env.VAPID_PUBLIC_KEY)return c.json({error:{code:'PUSH_NOT_CONFIGURED',message:'Push хабарламалары әлі бапталмаған'}},503);return c.json({publicKey:c.env.VAPID_PUBLIC_KEY});});
+app.post('/subscribe',async c=>{const parsed=schema.safeParse(await c.req.json().catch(()=>null));if(!parsed.success)return c.json({error:{code:'INVALID_SUBSCRIPTION',message:'Push жазылымының деректері дұрыс емес'}},400);const u=c.get('user'),v=parsed.data;await c.env.DB.prepare(`INSERT INTO notification_subscriptions(id,user_id,endpoint,p256dh,auth,user_agent,last_used_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id,p256dh=excluded.p256dh,auth=excluded.auth,user_agent=excluded.user_agent,last_used_at=excluded.last_used_at`).bind(crypto.randomUUID(),u.id,v.endpoint,v.keys.p256dh,v.keys.auth,c.req.header('user-agent')||null,new Date().toISOString()).run();return c.json({ok:true});});
+app.delete('/subscribe',async c=>{const parsed=z.object({endpoint:z.string().url()}).safeParse(await c.req.json().catch(()=>null));if(!parsed.success)return c.json({error:{code:'INVALID_SUBSCRIPTION',message:'Push мекенжайы дұрыс емес'}},400);await c.env.DB.prepare('DELETE FROM notification_subscriptions WHERE endpoint=? AND user_id=?').bind(parsed.data.endpoint,c.get('user').id).run();return c.json({ok:true});});
+export default app;
