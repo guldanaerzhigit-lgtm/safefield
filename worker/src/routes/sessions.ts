@@ -109,15 +109,14 @@ app.post('/:id/checkin', async c => {
   const parsed = checkinSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Choose SAFE or NEED_HELP and provide valid coordinates' } }, 400);
   const value = parsed.data;
-  const pending = await c.env.DB.prepare(
-    `SELECT id FROM safety_checkins WHERE session_id=? AND employee_id=? AND responded_at IS NULL ORDER BY due_at ASC LIMIT 1`
-  ).bind(session.id, c.get('user').id).first<{ id: string }>();
-  if (!pending) return c.json({ error: { code: 'CHECKIN_NOT_SCHEDULED', message: 'No pending check-in exists for this session' } }, 409);
   const now = new Date();
   const nextDue = new Date(now.getTime() + session.checkin_interval_minutes * 60_000).toISOString();
-  await c.env.DB.prepare(
-    `UPDATE safety_checkins SET responded_at=?,response=?,latitude=?,longitude=? WHERE id=? AND responded_at IS NULL`
-  ).bind(now.toISOString(), value.response, value.latitude ?? null, value.longitude ?? null, pending.id).run();
+  const answered = await c.env.DB.prepare(
+    `UPDATE safety_checkins SET responded_at=?,response=?,latitude=?,longitude=?
+     WHERE id=(SELECT id FROM safety_checkins WHERE session_id=? AND employee_id=? AND responded_at IS NULL ORDER BY due_at ASC LIMIT 1)
+       AND responded_at IS NULL RETURNING id`
+  ).bind(now.toISOString(), value.response, value.latitude ?? null, value.longitude ?? null, session.id, c.get('user').id).first<{ id: string }>();
+  if (!answered) return c.json({ error: { code: 'CHECKIN_NOT_SCHEDULED', message: 'No pending check-in exists for this session' } }, 409);
   await c.env.DB.prepare(
     `INSERT INTO safety_checkins (id,session_id,employee_id,due_at) VALUES (?,?,?,?)`
   ).bind(crypto.randomUUID(), session.id, c.get('user').id, nextDue).run();
