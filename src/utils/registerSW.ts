@@ -1,0 +1,1 @@
+export async function registerSW() { if ('serviceWorker' in navigator && import.meta.env.PROD) { try { await navigator.serviceWorker.register('/sw.js'); } catch (error) { console.error('Service worker registration failed', error); } } }

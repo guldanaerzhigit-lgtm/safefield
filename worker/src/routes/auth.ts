@@ -1,0 +1,22 @@
+import { Hono } from 'hono';
+import { SignJWT } from 'jose';
+import { compare } from 'bcryptjs';
+import { z } from 'zod';
+import type { Env } from '../types';
+const app = new Hono<{ Bindings: Env }>();
+const loginSchema = z.object({ email: z.email().max(254), password: z.string().min(8).max(128) });
+app.post('/login', async (c) => {
+  const parsed = loginSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Enter a valid email and password' } }, 400);
+  const email = parsed.data.email.trim().toLowerCase();
+  const row = await c.env.DB.prepare(`SELECT u.id,u.email,u.password_hash,u.full_name,u.role_id,u.department_id,u.supervisor_id,u.status,r.code AS role,d.name AS department_name FROM users u JOIN roles r ON r.id=u.role_id LEFT JOIN departments d ON d.id=u.department_id WHERE u.email=? COLLATE NOCASE LIMIT 1`).bind(email).first<Record<string, string | null>>();
+  if (!row || row.status !== 'ACTIVE' || !row.password_hash || !(await compare(parsed.data.password, row.password_hash))) return c.json({ error: { code: 'INVALID_CREDENTIALS', message: 'Email or password is incorrect' } }, 401);
+  const secret = c.env.JWT_SECRET;
+  if (!secret || secret.length < 32) return c.json({ error: { code: 'AUTH_NOT_CONFIGURED', message: 'Authentication is not configured. Contact your administrator.' } }, 503);
+  const token = await new SignJWT({ email: row.email, name: row.full_name, role: row.role, roleId: row.role_id, departmentId: row.department_id, supervisorId: row.supervisor_id }).setProtectedHeader({ alg: 'HS256' }).setSubject(row.id!).setIssuer('safefield').setAudience('safefield-api').setIssuedAt().setExpirationTime('8h').sign(new TextEncoder().encode(secret));
+  await c.env.DB.prepare(`UPDATE users SET last_login_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(row.id).run();
+  await c.env.DB.prepare(`INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (lower(hex(randomblob(16))),?,'AUTH_LOGIN','USER',?,?)`).bind(row.id,row.id,row.department_id).run();
+  return c.json({ token, user: { id: row.id, email: row.email, fullName: row.full_name, role: row.role, departmentName: row.department_name } });
+});
+app.post('/logout', (c) => c.json({ ok: true, message: 'Client session cleared' }));
+export default app;
