@@ -12,6 +12,7 @@ const createSchema = z.object({
   description: z.string().max(3000).optional().default(''),
   siteAddress: z.string().trim().min(3).max(500),
   assignedTo: z.string().min(1),
+  assetId: z.string().nullable().optional(),
   dueAt: z.iso.datetime().nullable().optional(),
   priority: z.enum(['LOW','MEDIUM','HIGH','CRITICAL']).default('MEDIUM'),
   checkpoints: z.array(z.object({ title: z.string().trim().min(2).max(120), siteAddress: z.string().max(500).optional(), latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(), radiusMeters: z.number().int().min(10).max(2000).optional() })).max(20).default([])
@@ -22,7 +23,7 @@ const evidenceSchema = z.object({ evidenceType: z.enum(['BEFORE','AFTER','OTHER'
 
 async function getOrder(c: any, id: string) {
   const user = c.get('user');
-  const order = await c.env.DB.prepare(`SELECT w.id,w.code,w.title,w.description,w.site_address AS siteAddress,w.department_id AS departmentId,w.assigned_to AS assignedTo,w.created_by AS createdBy,w.due_at AS dueAt,w.priority,w.status,w.accepted_at AS acceptedAt,w.started_at AS startedAt,w.submitted_at AS submittedAt,w.completed_at AS completedAt,w.created_at AS createdAt,u.full_name AS assigneeName,u.phone AS assigneePhone,creator.full_name AS creatorName,d.name AS departmentName FROM work_orders w JOIN users u ON u.id=w.assigned_to JOIN users creator ON creator.id=w.created_by LEFT JOIN departments d ON d.id=w.department_id WHERE w.id=?`).bind(id).first();
+  const order = await c.env.DB.prepare(`SELECT w.id,w.code,w.title,w.description,w.site_address AS siteAddress,w.asset_id AS assetId,a.name AS assetName,a.code AS assetCode,w.department_id AS departmentId,w.assigned_to AS assignedTo,w.created_by AS createdBy,w.due_at AS dueAt,w.priority,w.status,w.accepted_at AS acceptedAt,w.started_at AS startedAt,w.submitted_at AS submittedAt,w.completed_at AS completedAt,w.created_at AS createdAt,u.full_name AS assigneeName,u.phone AS assigneePhone,creator.full_name AS creatorName,d.name AS departmentName FROM work_orders w JOIN users u ON u.id=w.assigned_to JOIN users creator ON creator.id=w.created_by LEFT JOIN departments d ON d.id=w.department_id LEFT JOIN assets a ON a.id=w.asset_id WHERE w.id=?`).bind(id).first();
   if (!order) return { error: c.json({error:{code:'NOT_FOUND',message:'Жұмыс тапсырмасы табылмады'}},404) };
   const canManage = ['ADMIN','SAFETY_MANAGER','DISPATCHER'].includes(user.role) || (user.role==='SUPERVISOR' && (order.departmentId===user.departmentId || order.createdBy===user.id));
   if (!canManage && order.assignedTo!==user.id && order.createdBy!==user.id) return { error: c.json({error:{code:'FORBIDDEN',message:'Бұл тапсырмаға қол жеткізуге рұқсат жоқ'}},403) };
@@ -46,7 +47,7 @@ app.get('/', async c => {
   const user=c.get('user');
   const where = user.role==='EMPLOYEE' ? 'w.assigned_to=?' : user.role==='SUPERVISOR' ? '(w.department_id=? OR w.created_by=?)' : '1=1';
   const values = user.role==='EMPLOYEE' ? [user.id] : user.role==='SUPERVISOR' ? [user.departmentId||'',user.id] : [];
-  const rows=await c.env.DB.prepare(`SELECT w.id,w.code,w.title,w.description,w.site_address AS siteAddress,w.assigned_to AS assignedTo,w.due_at AS dueAt,w.priority,w.status,w.created_at AS createdAt,u.full_name AS assigneeName,creator.full_name AS creatorName,(SELECT COUNT(*) FROM work_order_checkpoints cp WHERE cp.work_order_id=w.id AND cp.is_active=1) AS checkpointCount,(SELECT COUNT(*) FROM work_order_checkpoint_scans sc WHERE sc.work_order_id=w.id) AS scannedCount,(SELECT COUNT(*) FROM work_order_evidence ev WHERE ev.work_order_id=w.id) AS evidenceCount FROM work_orders w JOIN users u ON u.id=w.assigned_to JOIN users creator ON creator.id=w.created_by WHERE ${where} ORDER BY CASE w.status WHEN 'NEW' THEN 0 WHEN 'IN_PROGRESS' THEN 1 WHEN 'RETURNED' THEN 2 WHEN 'REVIEW' THEN 3 ELSE 4 END,w.due_at IS NULL,w.due_at ASC,w.created_at DESC LIMIT 300`).bind(...values).all();
+  const rows=await c.env.DB.prepare(`SELECT w.id,w.code,w.title,w.description,w.site_address AS siteAddress,w.asset_id AS assetId,a.name AS assetName,w.assigned_to AS assignedTo,w.due_at AS dueAt,w.priority,w.status,w.created_at AS createdAt,u.full_name AS assigneeName,creator.full_name AS creatorName,(SELECT COUNT(*) FROM work_order_checkpoints cp WHERE cp.work_order_id=w.id AND cp.is_active=1) AS checkpointCount,(SELECT COUNT(*) FROM work_order_checkpoint_scans sc WHERE sc.work_order_id=w.id) AS scannedCount,(SELECT COUNT(*) FROM work_order_evidence ev WHERE ev.work_order_id=w.id) AS evidenceCount FROM work_orders w JOIN users u ON u.id=w.assigned_to JOIN users creator ON creator.id=w.created_by LEFT JOIN assets a ON a.id=w.asset_id WHERE ${where} ORDER BY CASE w.status WHEN 'NEW' THEN 0 WHEN 'IN_PROGRESS' THEN 1 WHEN 'RETURNED' THEN 2 WHEN 'REVIEW' THEN 3 ELSE 4 END,w.due_at IS NULL,w.due_at ASC,w.created_at DESC LIMIT 300`).bind(...values).all();
   return c.json({orders:rows.results});
 });
 
@@ -59,10 +60,12 @@ app.post('/', async c => {
   const assignee=await c.env.DB.prepare(`SELECT u.id,u.department_id AS departmentId,r.code AS role FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND u.status='ACTIVE'`).bind(d.assignedTo).first() as {id:string;departmentId:string|null;role:string}|null;
   if(!assignee || assignee.role!=='EMPLOYEE')return c.json({error:{code:'INVALID_ASSIGNEE',message:'Белсенді далалық қызметкерді таңдаңыз'}},400);
   if(user.role==='SUPERVISOR' && assignee.departmentId!==user.departmentId)return c.json({error:{code:'FORBIDDEN',message:'Өз бөлімшеңіздегі қызметкерді ғана тағайындай аласыз'}},403);
+  const asset=d.assetId?await c.env.DB.prepare('SELECT id,department_id AS departmentId FROM assets WHERE id=? AND status=\'ACTIVE\'').bind(d.assetId).first<{id:string;departmentId:string|null}>():null;
+  if(d.assetId && (!asset || (asset.departmentId && asset.departmentId!==assignee.departmentId)))return c.json({error:{code:'INVALID_ASSET',message:'Белсенді нысанды таңдаңыз және бөлімшесін тексеріңіз'}},400);
   const id=crypto.randomUUID(), now=new Date().toISOString(), code='SF-'+now.slice(2,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
   try {
-    await c.env.DB.prepare('INSERT INTO work_orders(id,code,title,description,site_address,department_id,assigned_to,created_by,due_at,priority) VALUES(?,?,?,?,?,?,?,?,?,?)')
-      .bind(id,code,d.title,d.description,d.siteAddress,assignee.departmentId,d.assignedTo,user.id,d.dueAt||null,d.priority).run();
+    await c.env.DB.prepare('INSERT INTO work_orders(id,code,title,description,site_address,department_id,assigned_to,created_by,due_at,priority,asset_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
+      .bind(id,code,d.title,d.description,d.siteAddress,assignee.departmentId,d.assignedTo,user.id,d.dueAt||null,d.priority,d.assetId||null).run();
     for(const cp of d.checkpoints){
       await c.env.DB.prepare('INSERT INTO work_order_checkpoints(id,work_order_id,code,title,site_address,latitude,longitude,radius_meters) VALUES(?,?,?,?,?,?,?,?)')
         .bind(crypto.randomUUID(),id,'SFC-'+crypto.randomUUID().replaceAll('-','').slice(0,18).toUpperCase(),cp.title,cp.siteAddress||d.siteAddress,cp.latitude??null,cp.longitude??null,cp.radiusMeters??150).run();
