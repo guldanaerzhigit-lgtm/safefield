@@ -56,7 +56,7 @@ app.post('/', async c => {
   const parsed=createSchema.safeParse(await c.req.json().catch(()=>null));
   if(!parsed.success)return c.json({error:{code:'VALIDATION_ERROR',message:'Тапсырма деректерін тексеріңіз'}},400);
   const d=parsed.data;
-  const assignee=await c.env.DB.prepare(`SELECT u.id,u.department_id AS departmentId,r.code AS role FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND u.status='ACTIVE'`).bind(d.assignedTo).first<any>();
+  const assignee=await c.env.DB.prepare(`SELECT u.id,u.department_id AS departmentId,r.code AS role FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND u.status='ACTIVE'`).bind(d.assignedTo).first();
   if(!assignee || assignee.role!=='EMPLOYEE')return c.json({error:{code:'INVALID_ASSIGNEE',message:'Белсенді далалық қызметкерді таңдаңыз'}},400);
   if(user.role==='SUPERVISOR' && assignee.departmentId!==user.departmentId)return c.json({error:{code:'FORBIDDEN',message:'Өз бөлімшеңіздегі қызметкерді ғана тағайындай аласыз'}},403);
   const id=crypto.randomUUID(), now=new Date().toISOString(), code='SF-'+now.slice(2,10).replaceAll('-','')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
@@ -107,7 +107,7 @@ app.post('/:id/checkpoints/scan', async c => {
   if(user.id!==access.order.assignedTo || !['ACCEPTED','IN_PROGRESS','RETURNED'].includes(access.order.status))return c.json({error:{code:'FORBIDDEN',message:'Бақылау нүктесін тек тағайындалған қызметкер растай алады'}},403);
   const parsed=scanSchema.safeParse(await c.req.json().catch(()=>null));
   if(!parsed.success)return c.json({error:{code:'VALIDATION_ERROR',message:'QR коды дұрыс емес'}},400);
-  const cp=await c.env.DB.prepare('SELECT id,title FROM work_order_checkpoints WHERE code=? AND work_order_id=? AND is_active=1').bind(parsed.data.code.trim(),access.order.id).first<any>();
+  const cp=await c.env.DB.prepare('SELECT id,title FROM work_order_checkpoints WHERE code=? AND work_order_id=? AND is_active=1').bind(parsed.data.code.trim(),access.order.id).first();
   if(!cp)return c.json({error:{code:'CHECKPOINT_NOT_FOUND',message:'Бұл QR код тапсырманың бақылау нүктесіне тиесілі емес'}},404);
   try {
     await c.env.DB.prepare('INSERT INTO work_order_checkpoint_scans(id,checkpoint_id,work_order_id,employee_id,latitude,longitude,accuracy,scanned_at,result) VALUES(?,?,?,?,?,?,?, ?,\'VERIFIED\')')
@@ -133,7 +133,7 @@ app.post('/:id/evidence', async c => {
 
 app.get('/:id/evidence/:evidenceId/photo', async c => {
   const access=await getOrder(c,c.req.param('id')); if(access.error)return access.error;
-  const row=await c.env.DB.prepare('SELECT photo_data AS photoData,mime_type AS mimeType FROM work_order_evidence WHERE id=? AND work_order_id=?').bind(c.req.param('evidenceId'),access.order.id).first<any>();
+  const row=await c.env.DB.prepare('SELECT photo_data AS photoData,mime_type AS mimeType FROM work_order_evidence WHERE id=? AND work_order_id=?').bind(c.req.param('evidenceId'),access.order.id).first();
   if(!row)return c.json({error:{code:'NOT_FOUND',message:'Фотоесеп табылмады'}},404);
   const encoded=String(row.photoData).split(',')[1]||'';
   const binary=Uint8Array.from(atob(encoded),ch=>ch.charCodeAt(0));
