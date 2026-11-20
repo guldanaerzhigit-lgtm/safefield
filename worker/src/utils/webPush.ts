@@ -20,8 +20,10 @@ export async function sendWebPush(subscription:{endpoint:string;p256dh:string;au
  if(clientPublic.length!==65||authSecret.length!==16)throw new Error('Push жазылымының кілттері жарамсыз');
  const receiver=await crypto.subtle.importKey('raw',asBuffer(clientPublic),{name:'ECDH',namedCurve:'P-256'},false,[]);
  const ephemeral=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveBits']) as CryptoKeyPair;
- const serverPublic=new Uint8Array(await crypto.subtle.exportKey('raw',ephemeral.publicKey));
- const shared=new Uint8Array(await crypto.subtle.deriveBits({name:'ECDH',public:receiver},ephemeral.privateKey,256));
+ const serverKey=ephemeral.publicKey as CryptoKey;
+ const privateKey=ephemeral.privateKey as CryptoKey;
+ const serverPublic=new Uint8Array(await crypto.subtle.exportKey('raw',serverKey));
+ const shared=new Uint8Array(await crypto.subtle.deriveBits({name:'ECDH',public:receiver} as unknown as EcdhKeyDeriveParams,privateKey,256));
  const authPrk=await hkdfExtract(authSecret,shared);
  const keyInfo=concat(enc.encode('WebPush: info\0'),clientPublic,serverPublic);
  const ikm=await hkdfExpand(authPrk,keyInfo,32);
