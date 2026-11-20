@@ -114,3 +114,28 @@
 
 
 .profile-permission-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #eef2f6}.profile-permission-row:last-of-type{border-bottom:0}.profile-permission-row>div{display:flex;flex-direction:column;gap:5px;min-width:0}.profile-permission-row b{display:flex;align-items:center;gap:7px;font-size:11px;color:#40556f}.profile-permission-row small{font-size:10px;color:#8996a6}.profile-inline-save:disabled{opacity:.5;cursor:not-allowed}
+
+
+/* Mobile-first navigation drawer and casual copy deterrent */
+.sidebar-backdrop{display:none}
+.app-shell{-webkit-tap-highlight-color:transparent}
+.app-shell :not(input):not(textarea):not(select):not([contenteditable="true"]){-webkit-user-select:none;user-select:none}
+.app-shell input,.app-shell textarea,.app-shell select,.app-shell [contenteditable="true"]{-webkit-user-select:text;user-select:text}
+@media(max-width:700px){
+ .sidebar{width:min(86vw,320px);max-width:320px;padding:calc(16px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+ .sidebar-brand{display:flex;align-items:center;gap:10px;padding:0 6px 22px;min-height:42px}
+ .sidebar-brand b{font-size:15px;letter-spacing:.08em}
+ .close-menu{display:grid;place-items:center;width:40px;height:40px;margin-left:auto;border-radius:10px;background:#ffffff10;color:#dbe7f5}
+ .workspace-label{padding:0 10px 10px;font-size:9px}
+ .sidebar nav{gap:4px;padding-bottom:16px}
+ .nav-item{min-height:46px;height:auto;padding:10px 12px;gap:12px;border-radius:9px;font-size:13px;line-height:1.35}
+ .nav-item svg{width:19px;height:19px;flex:none}
+ .sidebar-bottom{position:sticky;bottom:0;margin:8px -2px 0;padding:8px 2px 0;background:#111f38}
+ .sidebar-user{padding-top:12px}
+ .sidebar-backdrop.visible{display:block;position:fixed;inset:0;z-index:4;border:0;border-radius:0;background:#07132699;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+ .sidebar{z-index:6}
+ .topbar{position:sticky;top:0;z-index:3;padding-left:12px;padding-right:12px}
+ .menu-toggle{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:#f0f4f8}
+ .page-content{padding:22px 13px calc(28px + env(safe-area-inset-bottom))}
+}
+@media(max-width:360px){.sidebar{width:88vw}.nav-item{font-size:12px;min-height:44px}}
