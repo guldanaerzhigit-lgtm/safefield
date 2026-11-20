@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { SignJWT } from 'jose';
-import { compare } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { z } from 'zod';
 import { authMiddleware, type AuthVariables } from '../middleware/auth';
 import type { Env } from '../types';
@@ -20,27 +20,36 @@ function decodeBase64Url(value: string) {
   const base64 = value.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - value.length % 4) % 4);
   return Uint8Array.from(atob(base64), char => char.charCodeAt(0));
 }
+
+// bcryptjs avoids Cloudflare Workers' Web Crypto PBKDF2 iteration ceiling.
 async function hashPassword(password: string) {
-  const iterations = 310000;
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const bits = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256));
-  return 'pbkdf2$' + iterations + '$' + encodeBase64Url(salt) + '$' + encodeBase64Url(bits);
+  return hash(password, 12);
 }
+
 async function verifyPassword(password: string, stored: string) {
-  if (!stored.startsWith('pbkdf2$')) return compare(password, stored);
+  // Current hashes use bcrypt. Keep support for bcrypt hashes created previously.
+  if (/^\$2[aby]\$/.test(stored)) return compare(password, stored);
+
+  // Legacy PBKDF2 hashes are supported only when they fit the Workers runtime limit.
+  // Older 310,000-iteration hashes cannot be verified by Workers Web Crypto.
+  if (!stored.startsWith('pbkdf2$')) return false;
   const [, rawIterations, rawSalt, rawHash] = stored.split('$');
   const iterations = Number(rawIterations);
-  if (!Number.isSafeInteger(iterations) || iterations < 100000 || iterations > 1000000 || !rawSalt || !rawHash) return false;
-  const salt = decodeBase64Url(rawSalt);
-  const expected = decodeBase64Url(rawHash);
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const actual = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, expected.length * 8));
-  if (actual.length !== expected.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < actual.length; i++) mismatch |= actual[i] ^ expected[i];
-  return mismatch === 0;
+  if (!Number.isSafeInteger(iterations) || iterations < 100000 || iterations > 100000 || !rawSalt || !rawHash) return false;
+  try {
+    const salt = decodeBase64Url(rawSalt);
+    const expected = decodeBase64Url(rawHash);
+    if (salt.length !== 16 || expected.length !== 32) return false;
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+    const actual = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, expected.length * 8));
+    let mismatch = 0;
+    for (let i = 0; i < actual.length; i++) mismatch |= actual[i] ^ expected[i];
+    return mismatch === 0;
+  } catch {
+    return false;
+  }
 }
+
 function safeEqual(a: string, b: string) {
   if (a.length !== b.length) return false;
   let mismatch = 0;
