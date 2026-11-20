@@ -18,7 +18,7 @@ async function processEscalations(env:SchedulerEnv,now:string){
    for(const sub of subs.results){
     try{
      if(!env.VAPID_PRIVATE_KEY||!env.VAPID_PUBLIC_KEY||!env.VAPID_SUBJECT)throw new Error('VAPID кілттері бапталмаған');
-     const status=await sendWebPush(sub,{title:item.alert_type==='MISSED_CHECKIN'?'Қауіпсіздік растауы кешікті':'Шұғыл қауіпсіздік дабылы',body:item.employee_name+': '+(item.message||'Қызметкерге назар аудару қажет'),url:'/alerts',alertId:item.alert_id,priority:item.priority},env);
+     const status=await sendWebPush(sub,{title:item.alert_type==='MISSED_CHECKIN'?'Қауіпсіздік растауы кешікті':'Шұғыл қауіпсіздік дабылы',body:item.employee_name+': '+(item.message||'Қызметкерге назар аудару қажет'),url:'/alerts',alertId:item.alert_id,priority:item.priority},{VAPID_PRIVATE_KEY:env.VAPID_PRIVATE_KEY!,VAPID_PUBLIC_KEY:env.VAPID_PUBLIC_KEY!,VAPID_SUBJECT:env.VAPID_SUBJECT!});
      delivered++;
      await env.DB.prepare("INSERT INTO notification_logs(id,user_id,alert_id,channel,template_key,status,provider_message_id,sent_at) VALUES(?,?,?,'PUSH',?,'SENT',?,?)").bind(crypto.randomUUID(),userId,item.alert_id,'ESCALATION_LEVEL_'+item.level,String(status),now).run();
      await env.DB.prepare('UPDATE notification_subscriptions SET last_used_at=? WHERE id=?').bind(now,sub.id).run();
