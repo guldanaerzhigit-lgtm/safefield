@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Check, Clock3, MapPin, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
+import { useAuthStore } from '../stores/authStore';
 
 type SafetyAlert = {
   id: string; employee_name: string; alert_type: string; priority: string; status: string;
@@ -16,6 +17,9 @@ function labelType(type:string) {
 function formatDate(value:string) { return new Intl.DateTimeFormat('ru-RU',{dateStyle:'short',timeStyle:'short'}).format(new Date(value)); }
 
 export function AlertsPage() {
+  const user=useAuthStore(s=>s.user);
+  const canAcknowledge=user?.role==='SUPERVISOR'||user?.role==='DISPATCHER'||user?.role==='SAFETY_MANAGER'||user?.role==='ADMIN';
+  const canResolve=user?.role==='DISPATCHER'||user?.role==='SAFETY_MANAGER'||user?.role==='ADMIN';
   const [alerts,setAlerts]=useState<SafetyAlert[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
@@ -54,7 +58,7 @@ export function AlertsPage() {
         <div className="alert-card-top"><div className="alert-title"><span className={'alert-priority '+alert.priority.toLowerCase()}><AlertTriangle size={16}/></span><div><h3>{labelType(alert.alert_type)}</h3><span className="alert-employee">{alert.employee_name}</span></div></div><span className={'session-status '+alert.status.toLowerCase()}>{labelStatus(alert.status)}</span></div>
         <p className="alert-message">{alert.message||'Сообщение отсутствует'}</p>
         <div className="alert-meta"><span><Clock3 size={14}/>{formatDate(alert.created_at)}</span>{alert.latitude!=null&&alert.longitude!=null&&<span><MapPin size={14}/>{alert.latitude.toFixed(5)}, {alert.longitude.toFixed(5)}</span>}<span className="alert-priority-label">Приоритет: {alert.priority}</span></div>
-        <div className="alert-actions">{alert.status==='OPEN'&&<button className="safe-checkin-btn" disabled={busy===alert.id} onClick={()=>void act(alert,'acknowledge')}>Принять в работу</button>}{['OPEN','ACKNOWLEDGED','IN_PROGRESS'].includes(alert.status)&&<button className="create-session-btn" disabled={busy===alert.id} onClick={()=>void act(alert,'resolve')}>Закрыть тревогу</button>}</div>
+        <div className="alert-actions">{canAcknowledge&&alert.status==='OPEN'&&<button className="safe-checkin-btn" disabled={busy===alert.id} onClick={()=>void act(alert,'acknowledge')}>Принять в работу</button>}{canResolve&&['OPEN','ACKNOWLEDGED','IN_PROGRESS'].includes(alert.status)&&<button className="create-session-btn" disabled={busy===alert.id} onClick={()=>void act(alert,'resolve')}>Закрыть тревогу</button>}</div>
       </article>)}</div>}
     </section>
   </main>;
