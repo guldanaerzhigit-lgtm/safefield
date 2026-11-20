@@ -15,7 +15,6 @@
     "db:remote": "wrangler d1 migrations apply safefield-db --remote --config wrangler.toml"
   },
   "dependencies": {
-    "@hono/zod-validator": "^0.4.3",
     "@tanstack/react-query": "^5.90.5",
     "clsx": "^2.1.1",
     "hono": "^4.10.4",
