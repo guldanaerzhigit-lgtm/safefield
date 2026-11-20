@@ -4,14 +4,14 @@ type SchedulerEnv = { DB: D1Database; VAPID_PUBLIC_KEY?:string; VAPID_PRIVATE_KE
 type DueAlert={id:string;alert_id:string;level:number;target_role:string;employee_id:string;employee_name:string;department_id:string|null;supervisor_id:string|null;alert_type:string;priority:string;message:string|null;latitude:number|null;longitude:number|null};
 type Subscription={id:string;user_id:string;endpoint:string;p256dh:string;auth:string};
 async function processEscalations(env:SchedulerEnv,now:string){
- const due=await env.DB.prepare(`SELECT x.id,x.alert_id,x.level,x.target_role,a.employee_id,e.full_name AS employee_name,e.department_id,e.supervisor_id,a.alert_type,a.priority,a.message,a.latitude,a.longitude FROM safety_escalations x JOIN safety_alerts a ON a.id=x.alert_id JOIN users e ON e.id=a.employee_id WHERE x.status='PENDING' AND x.due_at<=? AND a.status IN ('OPEN','ACKNOWLEDGED','IN_PROGRESS') ORDER BY x.due_at LIMIT 100`).bind(now).all<DueAlert>();
+ const due=await env.DB.prepare(`SELECT x.id,x.alert_id,x.level,x.target_role,a.employee_id,e.full_name AS employee_name,e.department_id,e.supervisor_id,a.alert_type,a.priority,a.message,a.latitude,a.longitude FROM safety_escalations x JOIN safety_alerts a ON a.id=x.alert_id JOIN users e ON e.id=a.employee_id WHERE x.status='PENDING' AND x.due_at<=? AND a.status IN ('OPEN','ACKNOWLEDGED','IN_PROGRESS') AND (x.level=1 OR EXISTS(SELECT 1 FROM safety_escalations p WHERE p.alert_id=x.alert_id AND p.level=x.level-1 AND p.status IN ('SENT','FAILED'))) ORDER BY x.due_at LIMIT 100`).bind(now).all<DueAlert>();
  let sent=0,failed=0,waiting=0;
  for(const item of due.results){
   let recipients:{id:string}[]=[];
   if(item.target_role==='SUPERVISOR'&&item.supervisor_id)recipients=[{id:item.supervisor_id}];
   else recipients=(await env.DB.prepare(`SELECT u.id FROM users u JOIN roles r ON r.id=u.role_id WHERE r.code=? AND u.status='ACTIVE' AND (? IN ('ADMIN','DISPATCHER','SAFETY_MANAGER') OR u.department_id=?) LIMIT 100`).bind(item.target_role,item.department_id).all<{id:string}>()).results;
   const ids=[...new Set(recipients.map(r=>r.id))];
-  if(!ids.length){waiting++;continue;}
+  if(!ids.length){await env.DB.prepare("UPDATE safety_escalations SET status='FAILED' WHERE id=? AND status='PENDING'").bind(item.id).run();failed++;continue;}
   let delivered=0;
   for(const userId of ids){
    const subs=await env.DB.prepare('SELECT id,user_id,endpoint,p256dh,auth FROM notification_subscriptions WHERE user_id=?').bind(userId).all<Subscription>();
@@ -31,7 +31,7 @@ async function processEscalations(env:SchedulerEnv,now:string){
    }
   }
   if(delivered>0){await env.DB.prepare("UPDATE safety_escalations SET status='SENT',sent_at=? WHERE id=? AND status='PENDING'").bind(now,item.id).run();sent++;}
-  else if(ids.length){await env.DB.prepare("UPDATE safety_escalations SET due_at=? WHERE id=? AND status='PENDING'").bind(new Date(Date.now()+5*60_000).toISOString(),item.id).run();waiting++;}
+  else if(ids.length){await env.DB.prepare("UPDATE safety_escalations SET status='FAILED' WHERE id=? AND status='PENDING'").bind(item.id).run();failed++;}
  }
  return {processed:due.results.length,sent,failed,waiting};
 }
