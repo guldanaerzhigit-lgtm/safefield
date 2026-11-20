@@ -20,9 +20,9 @@ Production Functions need D1 binding `DB` pointing to database UUID `7774bdc4-e4
 Set the build variable `VITE_API_BASE_URL=/api/v1`. The API and UI use the same origin, so browser CORS is not required for production.
 
 ## First administrator
-After the first deployment, send a POST request to `/api/v1/auth/bootstrap` with header `x-bootstrap-secret` and JSON body:
+After the first deployment and after setting both secrets, open `https://safefield.pages.dev/setup`. Enter the administrator name, email, password and the same `BOOTSTRAP_SECRET` value you configured in Pages. The page calls `/api/v1/auth/bootstrap` once. Alternatively, send a POST request to `/api/v1/auth/bootstrap` with header `x-bootstrap-secret` and JSON body:
 `{"email":"admin@example.com","fullName":"SAFEFIELD Administrator","password":"use-a-unique-password-of-at-least-12-characters"}`
-The endpoint is permanently closed as soon as the first user is created. Remove `BOOTSTRAP_SECRET` from the Pages production environment after successful bootstrap.
+The endpoint is permanently closed as soon as the first user is created. Remove `BOOTSTRAP_SECRET` from the Pages production environment after successful bootstrap. Generate both secrets locally; for example, in PowerShell use `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))` twice and store each result only in the Cloudflare Pages Production secrets.
 
 ## Local development
 ```bash
