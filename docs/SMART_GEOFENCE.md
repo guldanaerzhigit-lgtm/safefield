@@ -18,15 +18,14 @@ Web Push requires a VAPID key pair. Generate a P-256 key pair locally with Node.
 node --input-type=module -e "import { generateKeyPairSync } from 'node:crypto'; const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' }); const p = publicKey.export({ format: 'jwk' }); const d = privateKey.export({ format: 'jwk' }); const b = s => Buffer.from(s, 'base64url'); console.log('VAPID_PUBLIC_KEY=' + Buffer.concat([Buffer.from([4]), b(p.x), b(p.y)]).toString('base64url')); console.log('VAPID_PRIVATE_KEY=' + d.d);"
 ```
 
-Copy the generated values and add them as Worker secrets from the repository root:
+The SafeField production site runs as a **Cloudflare Pages Functions** project named `safefield`. Add the values in Cloudflare Dashboard:
 
-```bash
-npx wrangler secret put VAPID_PUBLIC_KEY
-npx wrangler secret put VAPID_PRIVATE_KEY
-npx wrangler secret put VAPID_SUBJECT
-```
+1. Open **Workers & Pages → Pages → safefield → Settings → Environment variables**.
+2. Under **Production**, add `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` as encrypted secrets.
+3. Add `VAPID_SUBJECT` as a plain-text variable, using a monitored contact such as `mailto:safety@example.com`.
+4. Save the settings and trigger a new production deployment so the Pages Function receives the new bindings.
 
-For `VAPID_SUBJECT`, use a monitored contact such as `mailto:safety@example.com`. The public and private values must come from the same generated key pair. Never commit the private key.
+The public and private values must come from the same generated key pair. Never commit the private key. If deploying the standalone Worker from `wrangler.toml` instead of Pages Functions, configure the same values with `wrangler secret put`.
 
 ## Deploy
 
