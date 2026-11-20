@@ -1,6 +1,7 @@
 import type { Env } from '../types';
 
 const encoder = new TextEncoder();
+const DEFAULT_VAPID_PUBLIC_KEY = 'BGvyPwMeRMb1G1hLvvkrBjrqI3lHA4jp4N1qkZmu9Gs01_FvDXF6lqBB8FQyowXZOgZ8tMssFQ03kWH8oXT0s30';
 const decode = (value: string) => {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const raw = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
@@ -43,9 +44,9 @@ async function encryptPayload(payload: string, p256dh: string, auth: string) {
   return concat(header, cipher);
 }
 async function vapidToken(endpoint: string, env: Env) {
-  const publicKey = env.VAPID_PUBLIC_KEY;
+  const publicKey = env.VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY;
   const privateKey = env.VAPID_PRIVATE_KEY;
-  if (!publicKey || !privateKey) throw new Error('VAPID keys are not configured');
+  if (!privateKey) throw new Error('VAPID keys are not configured');
   const rawPublic = decode(publicKey);
   if (rawPublic.length !== 65 || rawPublic[0] !== 4) throw new Error('Invalid VAPID public key');
   const jwk = { kty: 'EC', crv: 'P-256', x: encode(rawPublic.slice(1, 33)), y: encode(rawPublic.slice(33, 65)), d: encode(decode(privateKey)), ext: true, key_ops: ['sign'] };
@@ -63,7 +64,7 @@ export async function sendWebPush(env: Env, subscription: { endpoint: string; p2
   return fetch(subscription.endpoint, {
     method: 'POST',
     headers: {
-      Authorization: 'vapid t=' + token + ', k=' + env.VAPID_PUBLIC_KEY,
+      Authorization: 'vapid t=' + token + ', k=' + (env.VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY),
       'Content-Encoding': 'aes128gcm',
       'Content-Type': 'application/octet-stream',
       TTL: '300',
