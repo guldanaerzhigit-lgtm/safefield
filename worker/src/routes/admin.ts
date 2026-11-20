@@ -94,7 +94,7 @@ app.post('/users', async c => {
   const role=await c.env.DB.prepare('SELECT id FROM roles WHERE code=?').bind(d.role).first<{id:string}>();
   if(!role)return c.json({error:{code:'INVALID_ROLE',message:'Рөл табылмады'}},400);
   if(d.departmentId){const dep=await c.env.DB.prepare('SELECT id FROM departments WHERE id=? AND is_active=1').bind(d.departmentId).first();if(!dep)return c.json({error:{code:'INVALID_DEPARTMENT',message:'Бөлімше табылмады или отключено'}},400);}
-  if(d.supervisorId){const sup=await c.env.DB.prepare("SELECT u.id,u.department_id AS departmentId,r.code AS role FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND u.status='ACTIVE'").bind(d.supervisorId).first();if(!sup || sup.role!=='SUPERVISOR' || (d.departmentId && sup.departmentId!==d.departmentId))return c.json({error:{code:'INVALID_SUPERVISOR',message:'Белсенді топ жетекшісін сол бөлімшеден таңдаңыз'}},400);}
+  if(d.supervisorId){const sup=await c.env.DB.prepare("SELECT u.id,u.department_id AS departmentId,r.code AS role FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND u.status='ACTIVE'").bind(d.supervisorId).first<{id:string;departmentId:string|null;role:string}>();if(!sup || sup.role!=='SUPERVISOR' || (d.departmentId && sup.departmentId!==d.departmentId))return c.json({error:{code:'INVALID_SUPERVISOR',message:'Белсенді топ жетекшісін сол бөлімшеден таңдаңыз'}},400);}
   try {
     await c.env.DB.prepare("INSERT INTO users(id,email,password_hash,full_name,phone,role_id,department_id,supervisor_id,status,locale) VALUES(?,?,?,?,?,?,?,?, 'ACTIVE','kk')")
       .bind(id,d.email.trim().toLowerCase(),await hashPassword(d.password),d.fullName.trim(),d.phone?.trim()||null,role.id,d.departmentId||null,d.supervisorId||null).run();
