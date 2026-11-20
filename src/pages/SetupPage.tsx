@@ -15,38 +15,38 @@ export function SetupPage() {
 
   async function submit(event:React.FormEvent) {
     event.preventDefault(); setError('');
-    if(password!==confirm){setError('Пароли не совпадают.');return;}
-    if(password.length<12){setError('Пароль должен содержать не менее 12 символов.');return;}
-    if(bootstrapSecret.length<32){setError('Проверьте секрет первого запуска: минимум 32 символа.');return;}
+    if(password!==confirm){setError('Құпиясөздер сәйкес келмейді.');return;}
+    if(password.length<12){setError('Құпиясөз кемінде 12 таңбадан тұруы керек.');return;}
+    if(bootstrapSecret.length<32){setError('Алғашқы іске қосу кілтін тексеріңіз: кемінде 32 таңба.');return;}
     setLoading(true);
     try {
       await api('/auth/bootstrap',{method:'POST',headers:{'x-bootstrap-secret':bootstrapSecret},body:JSON.stringify({fullName,email,password})});
       setSuccess(true);setPassword('');setConfirm('');setBootstrapSecret('');
-    } catch(e) { setError(e instanceof Error ? e.message : 'Не удалось создать администратора.'); }
+    } catch(e) { setError(e instanceof Error ? e.message : 'Әкімшіні құру мүмкін болмады.'); }
     finally { setLoading(false); }
   }
 
   return <main className="setup-shell">
-    <header className="setup-top"><Link to="/login"><ArrowLeft size={17}/> Ко входу</Link><div className="sessions-brand"><ShieldCheck size={20}/> SAFEFIELD</div></header>
+    <header className="setup-top"><Link to="/login"><ArrowLeft size={17}/> Кіру бетіне</Link><div className="sessions-brand"><ShieldCheck size={20}/> SAFEFIELD</div></header>
     <section className="setup-card">
       <div className="setup-icon"><UserPlus size={22}/></div>
       {success ? <>
-        <div className="eyebrow light">INITIAL SETUP COMPLETE</div><h1>Администратор создан</h1>
-        <p>Первичная настройка учётной записи завершена. Теперь можно войти в систему.</p>
-        <Link className="create-session-btn setup-submit" to="/login">Перейти ко входу</Link>
+        <div className="eyebrow light">БАСТАПҚЫ БАПТАУ АЯҚТАЛДЫ</div><h1>Әкімші құрылды</h1>
+        <p>Тіркелгіні бастапқы баптау аяқталды. Енді жүйеге кіруге болады.</p>
+        <Link className="create-session-btn setup-submit" to="/login">Жүйеге кіру</Link>
       </> : <>
-        <div className="eyebrow light">ONE-TIME ADMIN SETUP</div><h1>Первый администратор</h1>
-        <p>Создайте главную учётную запись SAFEFIELD. Эта форма сработает только один раз.</p>
+        <div className="eyebrow light">ӘКІМШІНІ БІР РЕТТІК БАПТАУ</div><h1>Алғашқы әкімші</h1>
+        <p>SAFEFIELD жүйесінің негізгі әкімші тіркелгісін жасаңыз. Бұл пішін тек бір рет қолданылады.</p>
         <form onSubmit={submit} className="setup-form">
-          <label>ФИО<input value={fullName} onChange={e=>setFullName(e.target.value)} minLength={2} maxLength={160} placeholder="Имя и фамилия" autoComplete="name" required/></label>
-          <label>Рабочая почта<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@company.kz" autoComplete="email" required/></label>
-          <label>Пароль администратора<input type="password" value={password} onChange={e=>setPassword(e.target.value)} minLength={12} maxLength={128} autoComplete="new-password" placeholder="Не менее 12 символов" required/></label>
-          <label>Повторите пароль<input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} autoComplete="new-password" required/></label>
-          <label className="secret-field"><span><KeyRound size={14}/> Секрет первичной настройки</span><input type="password" value={bootstrapSecret} onChange={e=>setBootstrapSecret(e.target.value)} autoComplete="off" placeholder="Вставьте BOOTSTRAP_SECRET" required/></label>
+          <label>Аты-жөні<input value={fullName} onChange={e=>setFullName(e.target.value)} minLength={2} maxLength={160} placeholder="Аты және тегі" autoComplete="name" required/></label>
+          <label>Жұмыс поштасы<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@company.kz" autoComplete="email" required/></label>
+          <label>Әкімші құпиясөзі<input type="password" value={password} onChange={e=>setPassword(e.target.value)} minLength={12} maxLength={128} autoComplete="new-password" placeholder="Кемінде 12 таңба" required/></label>
+          <label>Құпиясөзді қайталаңыз<input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} autoComplete="new-password" required/></label>
+          <label className="secret-field"><span><KeyRound size={14}/> Бастапқы баптау кілті</span><input type="password" value={bootstrapSecret} onChange={e=>setBootstrapSecret(e.target.value)} autoComplete="off" placeholder="BOOTSTRAP_SECRET мәнін енгізіңіз" required/></label>
           {error&&<div className="form-error" role="alert">{error}</div>}
-          <button className="submit-button" disabled={loading}>{loading?'Создание...':'Создать администратора'}</button>
+          <button className="submit-button" disabled={loading}>{loading?'Құрылуда...':'Әкімшіні құру'}</button>
         </form>
-        <div className="setup-note">После создания первой учётной записи endpoint первичной настройки будет закрыт. Удалите BOOTSTRAP_SECRET из настроек Pages.</div>
+        <div className="setup-note">Алғашқы тіркелгі жасалғаннан кейін бастапқы баптау нүктесі жабылады. Pages баптауларынан BOOTSTRAP_SECRET мәнін алып тастаңыз.</div>
       </>}
     </section>
   </main>;
