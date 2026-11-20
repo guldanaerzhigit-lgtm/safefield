@@ -110,7 +110,7 @@ app.post('/', async c => {
   const token=b64url(crypto.getRandomValues(new Uint8Array(32)));
   const id=crypto.randomUUID();
   const expiresAt=new Date(Date.now()+d.expiresInHours*3600000).toISOString();
-  await c.env.DB.prepare(`UPDATE invitations SET revoked_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE email=? COLLATE NOCASE AND accepted_at IS NULL AND revoked_at IS NULL`).bind(email).run();
+  await c.env.DB.prepare(`UPDATE invitations SET revoked_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE email=? COLLATE NOCASE AND accepted_at IS NULL AND revoked_at IS NULL AND (invited_by=? OR ?='ADMIN')`).bind(email,actor.id,actor.role).run();
   await c.env.DB.prepare(`INSERT INTO invitations(id,email,role_id,department_id,supervisor_id,invited_by,token_hash,expires_at) VALUES(?,?,?,?,?,?,?,?)`)
     .bind(id,email,role.id,d.departmentId,supervisorId,actor.id,await digest(token),expiresAt).run();
   await c.env.DB.prepare(`INSERT INTO audit_logs(id,actor_user_id,action,resource_type,resource_id,department_id,metadata_json) VALUES(?,?,'INVITATION_CREATED','INVITATION',?,?,?)`)
