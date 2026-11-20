@@ -1,9 +1,10 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, type AuthVariables } from '../middleware/auth';
 import type { Env } from '../types';
 
-const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+type AppEnv = { Bindings: Env; Variables: AuthVariables };
+const app = new Hono<AppEnv>();
 app.use('*', authMiddleware);
 
 const createSchema = z.object({
@@ -32,7 +33,7 @@ const sosSchema = z.object({
   hidden: z.boolean().default(false)
 });
 
-async function getOwnedSession(c: Parameters<Parameters<typeof app.get>[1]>[0], id: string) {
+async function getOwnedSession(c: Context<AppEnv>, id: string) {
   const user = c.get('user');
   const session = await c.env.DB.prepare(
     'SELECT id, employee_id, status, checkin_interval_minutes FROM safety_sessions WHERE id=?'
@@ -127,7 +128,7 @@ app.post('/:id/checkin', async c => {
   }
   if (value.response === 'NEED_HELP') {
     await c.env.DB.prepare(
-      `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude) VALUES (?,?,?,'MANUAL','HIGH','OPEN','Employee requested assistance',?,?,?)`
+      `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude) VALUES (?,?,?,'MANUAL','HIGH','OPEN','Employee requested assistance',?,?)`
     ).bind(crypto.randomUUID(), session.id, c.get('user').id, value.latitude ?? null, value.longitude ?? null).run();
   }
   await c.env.DB.prepare(
