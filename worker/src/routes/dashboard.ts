@@ -11,9 +11,9 @@ app.get('/summary', async (c) => {
   let checkinSql = `SELECT COUNT(*) AS n FROM safety_checkins WHERE responded_at IS NULL AND due_at < strftime('%Y-%m-%dT%H:%M:%fZ','now')`;
   let employeeSql = `SELECT COUNT(*) AS n FROM users WHERE status='ACTIVE'`;
   if (user.role === 'EMPLOYEE') {
-    sessionSql += ' AND employee_id=?'; alertSql += ' AND employee_id=?'; checkinSql += ' AND employee_id=?'; employeeSql = `SELECT COUNT(*) AS n FROM users WHERE id=? AND status='ACTIVE'`;
+    sessionSql += ' AND employee_id=?'; alertSql += ' AND employee_id=?'; checkinSql += ' AND c.employee_id=?'; employeeSql = `SELECT COUNT(*) AS n FROM users WHERE id=? AND status='ACTIVE'`;
   } else if (user.role === 'SUPERVISOR') {
-    sessionSql += ' AND employee_id IN (SELECT id FROM users WHERE department_id=?)'; alertSql += ' AND employee_id IN (SELECT id FROM users WHERE department_id=?)'; checkinSql += ' AND employee_id IN (SELECT id FROM users WHERE department_id=?)'; employeeSql += ' AND department_id=?';
+    sessionSql += ' AND employee_id IN (SELECT id FROM users WHERE department_id=?)'; alertSql += ' AND employee_id IN (SELECT id FROM users WHERE department_id=?)'; checkinSql += ' AND c.employee_id IN (SELECT id FROM users WHERE department_id=?)'; employeeSql += ' AND department_id=?';
   }
   const bind = user.role === 'EMPLOYEE' ? [user.id] : user.role === 'SUPERVISOR' ? [user.departmentId || ''] : [];
   const [sessions,alerts,checkins,employees] = await Promise.all([c.env.DB.prepare(sessionSql).bind(...bind).first<{n:number}>(),c.env.DB.prepare(alertSql).bind(...bind).first<{n:number}>(),c.env.DB.prepare(checkinSql).bind(...bind).first<{n:number}>(),c.env.DB.prepare(employeeSql).bind(...bind).first<{n:number}>()]);
