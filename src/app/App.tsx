@@ -6,6 +6,7 @@ import { SetupPage } from '../pages/SetupPage';
 import { AlertsPage } from '../pages/AlertsPage';
 import { AdminPage } from '../pages/AdminPage';
 import { TeamPage } from '../pages/TeamPage';
+import { DispatchPage } from '../pages/DispatchPage';
 import { useAuthStore } from '../stores/authStore';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
     <Route path="/alerts" element={token ? <AlertsPage /> : <Navigate to="/login" replace />} />
     <Route path="/admin" element={token ? <AdminPage /> : <Navigate to="/login" replace />} />
     <Route path="/team" element={token ? <TeamPage /> : <Navigate to="/login" replace />} />
+    <Route path="/dispatch" element={token ? <DispatchPage /> : <Navigate to="/login" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>;
 }
