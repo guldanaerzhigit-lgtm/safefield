@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { SignJWT } from 'jose';
 import { z } from 'zod';
 import { authMiddleware, type AuthVariables } from '../middleware/auth';
 import type { Env, Role } from '../types';
