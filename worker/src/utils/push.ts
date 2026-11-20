@@ -1,6 +1,7 @@
 import type { Env } from '../types';
 
 const encoder = new TextEncoder();
+const asBuffer = (value: Uint8Array): ArrayBuffer => { const buffer = new ArrayBuffer(value.length); new Uint8Array(buffer).set(value); return buffer; };
 const DEFAULT_VAPID_PUBLIC_KEY = 'BGvyPwMeRMb1G1hLvvkrBjrqI3lHA4jp4N1qkZmu9Gs01_FvDXF6lqBB8FQyowXZOgZ8tMssFQ03kWH8oXT0s30';
 const decode = (value: string) => {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -19,23 +20,23 @@ const concat = (...parts: Uint8Array[]) => {
   return result;
 };
 async function hkdf(ikm: Uint8Array, salt: Uint8Array, info: Uint8Array, length: number) {
-  const key = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
-  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info }, key, length * 8));
+  const key = await crypto.subtle.importKey('raw', asBuffer(ikm), 'HKDF', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: asBuffer(salt), info: asBuffer(info) }, key, length * 8));
 }
 async function encryptPayload(payload: string, p256dh: string, auth: string) {
   const clientPublic = decode(p256dh), authSecret = decode(auth);
-  const clientKey = await crypto.subtle.importKey('raw', clientPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
-  const serverKeys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', public: clientKey }, serverKeys.privateKey, 256));
+  const clientKey = await crypto.subtle.importKey('raw', asBuffer(clientPublic), { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const serverKeys = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']) as CryptoKeyPair;
+  const shared = new Uint8Array(await crypto.subtle.deriveBits({ name: 'ECDH', $public: clientKey } as unknown as AlgorithmIdentifier, serverKeys.privateKey, 256));
   const serverPublic = new Uint8Array(await crypto.subtle.exportKey('raw', serverKeys.publicKey));
   const keyInfo = concat(encoder.encode('WebPush: info\0'), clientPublic, serverPublic);
   const ikm = await hkdf(shared, authSecret, keyInfo, 32);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const cek = await hkdf(ikm, salt, encoder.encode('Content-Encoding: aes128gcm\0'), 16);
   const nonce = await hkdf(ikm, salt, encoder.encode('Content-Encoding: nonce\0'), 12);
-  const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt']);
+  const aesKey = await crypto.subtle.importKey('raw', asBuffer(cek), { name: 'AES-GCM' }, false, ['encrypt']);
   const plain = concat(encoder.encode(payload), new Uint8Array([2]));
-  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce, tagLength: 128 }, aesKey, plain));
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: asBuffer(nonce), tagLength: 128 }, aesKey, asBuffer(plain)));
   const header = new Uint8Array(21 + serverPublic.length);
   header.set(salt, 0);
   new DataView(header.buffer).setUint32(16, 4096, false);
@@ -55,7 +56,7 @@ async function vapidToken(endpoint: string, env: Env) {
   const header = encode(encoder.encode(JSON.stringify({ typ: 'JWT', alg: 'ES256' })));
   const claims = encode(encoder.encode(JSON.stringify({ aud: new URL(endpoint).origin, exp: now + 12 * 60 * 60, sub: env.VAPID_SUBJECT || 'mailto:admin@safefield.app' })));
   const unsigned = header + '.' + claims;
-  const signature = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, encoder.encode(unsigned)));
+  const signature = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, asBuffer(encoder.encode(unsigned))));
   return unsigned + '.' + encode(signature);
 }
 export async function sendWebPush(env: Env, subscription: { endpoint: string; p256dh: string; auth: string }, payload: { title: string; body: string; url: string }) {
