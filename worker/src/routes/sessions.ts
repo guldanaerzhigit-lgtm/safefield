@@ -33,16 +33,19 @@ const sosSchema = z.object({
   hidden: z.boolean().default(false)
 });
 
-async function getOwnedSession(c: Context<AppEnv>, id: string) {
+type SessionRow = { id: string; employee_id: string; status: string; checkin_interval_minutes: number };
+type OwnedSessionResult = { session: SessionRow; error: null } | { session: null; error: Response };
+
+async function getOwnedSession(c: Context<AppEnv>, id: string): Promise<OwnedSessionResult> {
   const user = c.get('user');
   const session = await c.env.DB.prepare(
     'SELECT id, employee_id, status, checkin_interval_minutes FROM safety_sessions WHERE id=?'
   ).bind(id).first<{ id: string; employee_id: string; status: string; checkin_interval_minutes: number }>();
-  if (!session) return { error: c.json({ error: { code: 'NOT_FOUND', message: 'Safety session not found' } }, 404) };
+  if (!session) return { session: null, error: c.json({ error: { code: 'NOT_FOUND', message: 'Safety session not found' } }, 404) };
   if (session.employee_id !== user.id && user.role !== 'ADMIN') {
-    return { error: c.json({ error: { code: 'FORBIDDEN', message: 'This session belongs to another employee' } }, 403) };
+    return { session: null, error: c.json({ error: { code: 'FORBIDDEN', message: 'This session belongs to another employee' } }, 403) };
   }
-  return { session };
+  return { session, error: null };
 }
 
 app.get('/', async c => {
@@ -84,7 +87,7 @@ app.post('/', async c => {
 app.post('/:id/start', async c => {
   const owned = await getOwnedSession(c, c.req.param('id'));
   if (owned.error) return owned.error;
-  const session = owned.session!;
+  const session = owned.session;
   if (session.status !== 'PLANNED') return c.json({ error: { code: 'INVALID_STATE', message: 'Only planned sessions can be started' } }, 409);
   const now = new Date();
   const due = new Date(now.getTime() + session.checkin_interval_minutes * 60_000).toISOString();
