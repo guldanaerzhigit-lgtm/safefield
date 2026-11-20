@@ -82,6 +82,14 @@ app.get('/:id', async c => {
   return c.json({order:access.order,checkpoints:checkpoints.results,evidence:evidence.results,scans:scans.results});
 });
 
+app.get('/:id/history', async c => {
+  const access=await getOrder(c,c.req.param('id')); if(access.error)return access.error;
+  const rows=await c.env.DB.prepare(`SELECT a.id,a.action AS eventType,a.metadata_json AS metadataJson,a.created_at AS createdAt,u.full_name AS actorName
+    FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_user_id
+    WHERE a.resource_type='WORK_ORDER' AND a.resource_id=? ORDER BY a.created_at DESC LIMIT 100`).bind(access.order.id).all();
+  return c.json({events:rows.results});
+});
+
 app.post('/:id/status', async c => {
   const access=await getOrder(c,c.req.param('id')); if(access.error)return access.error;
   const user=c.get('user'), parsed=transitionSchema.safeParse(await c.req.json().catch(()=>null));
