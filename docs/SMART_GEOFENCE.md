@@ -29,16 +29,15 @@ The public and private values must come from the same generated key pair. Never 
 
 ## Deploy
 
-After merging this PR into `main`:
+The `safefield` Cloudflare Pages project is connected to this GitHub repository's `main` branch and builds `dist/` with `npm run build`. Merging this PR triggers the production Pages deployment automatically; the Pages Functions entrypoint imports `worker/src/index.ts`, so the API changes are deployed with the site. Do not run `npm run worker:deploy` for this Pages-hosted production API unless intentionally deploying a separate standalone Worker.
+
+The `0008_smart_geofence.sql` migration has already been applied to the current production D1 database after creating a SQL export backup. For another environment, first confirm the target database and backup, then run:
 
 ```bash
-npm ci
 npm run db:remote
-npm run worker:deploy
-npm run build
 ```
 
-Publish the generated frontend `dist/` directory using the repository's configured Pages deployment pipeline. Do not apply the migration against production before reviewing the target D1 database and backup policy.
+After changing Pages production environment variables (VAPID keys), trigger a new Pages production deployment so the Functions runtime receives the updated bindings.
 
 ## Supervisor / dispatcher setup
 
