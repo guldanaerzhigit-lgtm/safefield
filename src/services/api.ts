@@ -1,5 +1,5 @@
 import { useAuthStore } from '../stores/authStore';
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787/api/v1';
+const API = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().token;
   const response = await fetch(`${API}${path}`, { ...init, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers } });
