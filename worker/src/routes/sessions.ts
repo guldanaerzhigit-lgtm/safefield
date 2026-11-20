@@ -20,14 +20,15 @@ const createSchema = z.object({
 }).refine(v => new Date(v.plannedEndAt) > new Date(v.plannedStartAt), 'Аяқталу уақыты басталу уақытынан кейін болуы керек');
 
 const locationSchema = z.object({ latitude: z.number().min(-90).max(90).nullable().optional(), longitude: z.number().min(-180).max(180).nullable().optional(), accuracy: z.number().min(0).max(10000).nullable().optional() });
-const checkinSchema = locationSchema.extend({ response: z.enum(['SAFE', 'NEED_HELP']) });
+const checkinSchema = locationSchema.extend({ response: z.enum(['SAFE', 'NEED_HELP']), clientEventId: z.string().uuid().optional() });
 
 const sosSchema = z.object({
   message: z.string().max(1000).optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
   accuracy: z.number().min(0).max(10000).nullable().optional(),
-  hidden: z.boolean().default(false)
+  hidden: z.boolean().default(false),
+  clientEventId: z.string().uuid().optional()
 });
 
 type SessionRow = { id: string; employee_id: string; status: string; checkin_interval_minutes: number };
@@ -150,6 +151,7 @@ app.post('/:id/checkin', async c => {
   const parsed = checkinSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Қауіпсіз немесе көмек қажет екенін таңдаңыз және координаттарды дұрыс енгізіңіз' } }, 400);
   const value = parsed.data;
+  if (value.clientEventId) { const prior = await c.env.DB.prepare('SELECT response_json FROM offline_event_receipts WHERE client_event_id=? AND user_id=?').bind(value.clientEventId,c.get('user').id).first<{response_json:string}>(); if(prior) return c.json(JSON.parse(prior.response_json)); }
   const now = new Date();
   const nextDue = new Date(now.getTime() + session.checkin_interval_minutes * 60_000).toISOString();
   const answered = await c.env.DB.prepare(
@@ -177,7 +179,9 @@ app.post('/:id/checkin', async c => {
   await c.env.DB.prepare(
     `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (?,?,?,?,?,?)`
   ).bind(crypto.randomUUID(), c.get('user').id, 'SESSION_CHECKIN_' + value.response, 'SAFETY_SESSION', session.id, c.get('user').departmentId).run();
-  return c.json({ ok: true, response: value.response, nextCheckinAt: nextDue });
+  const result = { ok: true, response: value.response, nextCheckinAt: nextDue };
+  if(value.clientEventId) await c.env.DB.prepare('INSERT OR IGNORE INTO offline_event_receipts(client_event_id,user_id,response_json) VALUES(?,?,?)').bind(value.clientEventId,c.get('user').id,JSON.stringify(result)).run();
+  return c.json(result);
 });
 
 app.post('/:id/sos', async c => {
@@ -188,6 +192,7 @@ app.post('/:id/sos', async c => {
   const parsed = sosSchema.safeParse(await c.req.json().catch(() => ({})));
   if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'SOS деректері дұрыс емес' } }, 400);
   const value = parsed.data;
+  if (value.clientEventId) { const prior = await c.env.DB.prepare('SELECT response_json FROM offline_event_receipts WHERE client_event_id=? AND user_id=?').bind(value.clientEventId,c.get('user').id).first<{response_json:string}>(); if(prior) return c.json(JSON.parse(prior.response_json)); }
   const id = crypto.randomUUID();
   await c.env.DB.prepare(
     `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude,location_accuracy) VALUES (?,?,?,?,'CRITICAL','OPEN',?,?,?,?)`
@@ -201,7 +206,9 @@ app.post('/:id/sos', async c => {
   await c.env.DB.prepare(
     `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (?,?,'SOS_CREATED','SAFETY_ALERT',?,?)`
   ).bind(crypto.randomUUID(), c.get('user').id, id, c.get('user').departmentId).run();
-  return c.json({ alertId: id, status: 'OPEN', priority: 'CRITICAL' }, 201);
+  const result = { alertId: id, status: 'OPEN', priority: 'CRITICAL' };
+  if(value.clientEventId) await c.env.DB.prepare('INSERT OR IGNORE INTO offline_event_receipts(client_event_id,user_id,response_json) VALUES(?,?,?)').bind(value.clientEventId,c.get('user').id,JSON.stringify(result)).run();
+  return c.json(result, 201);
 });
 
 app.post('/:id/complete', async c => {
