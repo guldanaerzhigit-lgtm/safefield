@@ -2,8 +2,174 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, type AuthVariables } from '../middleware/auth';
 import type { Env } from '../types';
-const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>(); app.use('*',authMiddleware);
-const createSchema = z.object({ activityTypeId:z.string().min(1),title:z.string().min(3).max(160),siteAddress:z.string().min(3).max(500),siteLat:z.number().min(-90).max(90).nullable().optional(),siteLng:z.number().min(-180).max(180).nullable().optional(),plannedStartAt:z.iso.datetime(),plannedEndAt:z.iso.datetime(),checkinIntervalMinutes:z.number().int().min(5).max(240).default(30),supervisorId:z.string().nullable().optional() }).refine(v=>new Date(v.plannedEndAt)>new Date(v.plannedStartAt),'End must be after start');
-app.get('/',async c=>{const u=c.get('user');let sql=`SELECT s.*,t.name AS activity_name FROM safety_sessions s JOIN safety_activity_types t ON t.id=s.activity_type_id`;let stmt;if(u.role==='EMPLOYEE')stmt=c.env.DB.prepare(sql+' WHERE s.employee_id=? ORDER BY s.created_at DESC LIMIT 100').bind(u.id);else if(u.role==='SUPERVISOR')stmt=c.env.DB.prepare(sql+' JOIN users e ON e.id=s.employee_id WHERE e.department_id=? ORDER BY s.created_at DESC LIMIT 200').bind(u.departmentId||'');else stmt=c.env.DB.prepare(sql+' ORDER BY s.created_at DESC LIMIT 200');const rows=await stmt.all();return c.json({sessions:rows.results});});
-app.post('/',async c=>{const u=c.get('user');if(u.role!=='EMPLOYEE'&&u.role!=='ADMIN')return c.json({error:{code:'FORBIDDEN',message:'Only employees can create a session for themselves'}},403);const p=createSchema.safeParse(await c.req.json().catch(()=>null));if(!p.success)return c.json({error:{code:'VALIDATION_ERROR',message:p.error.issues[0]?.message||'Invalid payload'}},400);const v=p.data;const type=await c.env.DB.prepare('SELECT id FROM safety_activity_types WHERE id=? AND is_active=1').bind(v.activityTypeId).first();if(!type)return c.json({error:{code:'INVALID_ACTIVITY_TYPE',message:'Activity type not found'}},400);const id=crypto.randomUUID();await c.env.DB.prepare(`INSERT INTO safety_sessions(id,employee_id,supervisor_id,activity_type_id,title,site_address,site_lat,site_lng,planned_start_at,planned_end_at,checkin_interval_minutes,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,'PLANNED')`).bind(id,u.id,v.supervisorId||u.supervisorId,v.activityTypeId,v.title,v.siteAddress,v.siteLat??null,v.siteLng??null,v.plannedStartAt,v.plannedEndAt,v.checkinIntervalMinutes).run();await c.env.DB.prepare(`INSERT INTO audit_logs(id,actor_user_id,action,resource_type,resource_id,department_id) VALUES(?,?,'SESSION_CREATED','SAFETY_SESSION',?,?)`).bind(crypto.randomUUID(),u.id,id,u.departmentId).run();return c.json({id,status:'PLANNED'},201);});
+
+const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+app.use('*', authMiddleware);
+
+const createSchema = z.object({
+  activityTypeId: z.string().min(1),
+  title: z.string().min(3).max(160),
+  siteAddress: z.string().min(3).max(500),
+  siteLat: z.number().min(-90).max(90).nullable().optional(),
+  siteLng: z.number().min(-180).max(180).nullable().optional(),
+  plannedStartAt: z.iso.datetime(),
+  plannedEndAt: z.iso.datetime(),
+  checkinIntervalMinutes: z.number().int().min(5).max(240).default(30),
+  supervisorId: z.string().nullable().optional()
+}).refine(v => new Date(v.plannedEndAt) > new Date(v.plannedStartAt), 'End must be after start');
+
+const checkinSchema = z.object({
+  response: z.enum(['SAFE', 'NEED_HELP']),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional()
+});
+
+const sosSchema = z.object({
+  message: z.string().max(1000).optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  accuracy: z.number().min(0).max(10000).nullable().optional(),
+  hidden: z.boolean().default(false)
+});
+
+async function getOwnedSession(c: Parameters<Parameters<typeof app.get>[1]>[0], id: string) {
+  const user = c.get('user');
+  const session = await c.env.DB.prepare(
+    'SELECT id, employee_id, status, checkin_interval_minutes FROM safety_sessions WHERE id=?'
+  ).bind(id).first<{ id: string; employee_id: string; status: string; checkin_interval_minutes: number }>();
+  if (!session) return { error: c.json({ error: { code: 'NOT_FOUND', message: 'Safety session not found' } }, 404) };
+  if (session.employee_id !== user.id && user.role !== 'ADMIN') {
+    return { error: c.json({ error: { code: 'FORBIDDEN', message: 'This session belongs to another employee' } }, 403) };
+  }
+  return { session };
+}
+
+app.get('/', async c => {
+  const user = c.get('user');
+  const base = 'SELECT s.*, t.name AS activity_name FROM safety_sessions s JOIN safety_activity_types t ON t.id=s.activity_type_id';
+  let stmt;
+  if (user.role === 'EMPLOYEE') {
+    stmt = c.env.DB.prepare(base + ' WHERE s.employee_id=? ORDER BY s.created_at DESC LIMIT 100').bind(user.id);
+  } else if (user.role === 'SUPERVISOR') {
+    stmt = c.env.DB.prepare(base + ' JOIN users e ON e.id=s.employee_id WHERE e.department_id=? ORDER BY s.created_at DESC LIMIT 200').bind(user.departmentId || '');
+  } else {
+    stmt = c.env.DB.prepare(base + ' ORDER BY s.created_at DESC LIMIT 200');
+  }
+  const rows = await stmt.all();
+  return c.json({ sessions: rows.results });
+});
+
+app.post('/', async c => {
+  const user = c.get('user');
+  if (user.role !== 'EMPLOYEE' && user.role !== 'ADMIN') {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only an employee can create their own safety session' } }, 403);
+  }
+  const parsed = createSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.issues[0]?.message || 'Invalid payload' } }, 400);
+  const value = parsed.data;
+  const activity = await c.env.DB.prepare('SELECT id FROM safety_activity_types WHERE id=? AND is_active=1').bind(value.activityTypeId).first();
+  if (!activity) return c.json({ error: { code: 'INVALID_ACTIVITY_TYPE', message: 'Activity type not found' } }, 400);
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare(
+    `INSERT INTO safety_sessions (id,employee_id,supervisor_id,activity_type_id,title,site_address,site_lat,site_lng,planned_start_at,planned_end_at,checkin_interval_minutes,status)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,'PLANNED')`
+  ).bind(id, user.id, value.supervisorId || user.supervisorId, value.activityTypeId, value.title, value.siteAddress, value.siteLat ?? null, value.siteLng ?? null, value.plannedStartAt, value.plannedEndAt, value.checkinIntervalMinutes).run();
+  await c.env.DB.prepare(
+    `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (?,?,'SESSION_CREATED','SAFETY_SESSION',?,?)`
+  ).bind(crypto.randomUUID(), user.id, id, user.departmentId).run();
+  return c.json({ id, status: 'PLANNED' }, 201);
+});
+
+app.post('/:id/start', async c => {
+  const owned = await getOwnedSession(c, c.req.param('id'));
+  if (owned.error) return owned.error;
+  const session = owned.session!;
+  if (session.status !== 'PLANNED') return c.json({ error: { code: 'INVALID_STATE', message: 'Only planned sessions can be started' } }, 409);
+  const now = new Date();
+  const due = new Date(now.getTime() + session.checkin_interval_minutes * 60_000).toISOString();
+  const update = await c.env.DB.prepare(
+    `UPDATE safety_sessions SET status='ACTIVE',started_at=?,updated_at=? WHERE id=? AND status='PLANNED'`
+  ).bind(now.toISOString(), now.toISOString(), session.id).run();
+  if (!update.meta.changes) return c.json({ error: { code: 'INVALID_STATE', message: 'Session state changed; refresh and try again' } }, 409);
+  await c.env.DB.prepare(
+    `INSERT INTO safety_checkins (id,session_id,employee_id,due_at) VALUES (?,?,?,?)`
+  ).bind(crypto.randomUUID(), session.id, c.get('user').id, due).run();
+  await c.env.DB.prepare(
+    `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id) VALUES (?,?,'SESSION_STARTED','SAFETY_SESSION',?)`
+  ).bind(crypto.randomUUID(), c.get('user').id, session.id).run();
+  return c.json({ id: session.id, status: 'ACTIVE', nextCheckinAt: due });
+});
+
+app.post('/:id/checkin', async c => {
+  const owned = await getOwnedSession(c, c.req.param('id'));
+  if (owned.error) return owned.error;
+  const session = owned.session!;
+  if (session.status !== 'ACTIVE') return c.json({ error: { code: 'INVALID_STATE', message: 'Check-in is available only during an active session' } }, 409);
+  const parsed = checkinSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Choose SAFE or NEED_HELP and provide valid coordinates' } }, 400);
+  const value = parsed.data;
+  const pending = await c.env.DB.prepare(
+    `SELECT id FROM safety_checkins WHERE session_id=? AND employee_id=? AND responded_at IS NULL ORDER BY due_at ASC LIMIT 1`
+  ).bind(session.id, c.get('user').id).first<{ id: string }>();
+  if (!pending) return c.json({ error: { code: 'CHECKIN_NOT_SCHEDULED', message: 'No pending check-in exists for this session' } }, 409);
+  const now = new Date();
+  const nextDue = new Date(now.getTime() + session.checkin_interval_minutes * 60_000).toISOString();
+  await c.env.DB.prepare(
+    `UPDATE safety_checkins SET responded_at=?,response=?,latitude=?,longitude=? WHERE id=? AND responded_at IS NULL`
+  ).bind(now.toISOString(), value.response, value.latitude ?? null, value.longitude ?? null, pending.id).run();
+  await c.env.DB.prepare(
+    `INSERT INTO safety_checkins (id,session_id,employee_id,due_at) VALUES (?,?,?,?)`
+  ).bind(crypto.randomUUID(), session.id, c.get('user').id, nextDue).run();
+  if (value.latitude != null && value.longitude != null) {
+    await c.env.DB.prepare(
+      `INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,recorded_at,source) VALUES (?,?,?,?,?,?,'GPS')`
+    ).bind(crypto.randomUUID(), c.get('user').id, session.id, value.latitude, value.longitude, now.toISOString()).run();
+  }
+  if (value.response === 'NEED_HELP') {
+    await c.env.DB.prepare(
+      `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude) VALUES (?,?,?,'MANUAL','HIGH','OPEN','Employee requested assistance',?,?,?)`
+    ).bind(crypto.randomUUID(), session.id, c.get('user').id, value.latitude ?? null, value.longitude ?? null).run();
+  }
+  await c.env.DB.prepare(
+    `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (?,?,?,?,?,?)`
+  ).bind(crypto.randomUUID(), c.get('user').id, 'SESSION_CHECKIN_' + value.response, 'SAFETY_SESSION', session.id, c.get('user').departmentId).run();
+  return c.json({ ok: true, response: value.response, nextCheckinAt: nextDue });
+});
+
+app.post('/:id/sos', async c => {
+  const owned = await getOwnedSession(c, c.req.param('id'));
+  if (owned.error) return owned.error;
+  const session = owned.session!;
+  if (!['ACTIVE', 'PLANNED'].includes(session.status)) return c.json({ error: { code: 'INVALID_STATE', message: 'SOS cannot be created for a closed session' } }, 409);
+  const parsed = sosSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid SOS payload' } }, 400);
+  const value = parsed.data;
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare(
+    `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude,location_accuracy) VALUES (?,?,?,?,'CRITICAL','OPEN',?,?,?,?)`
+  ).bind(id, session.id, c.get('user').id, value.hidden ? 'HIDDEN_SOS' : 'SOS', value.message || (value.hidden ? 'Hidden emergency alert' : 'Emergency assistance requested'), value.latitude ?? null, value.longitude ?? null, value.accuracy ?? null).run();
+  await c.env.DB.prepare(
+    `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (?,?,'SOS_CREATED','SAFETY_ALERT',?,?)`
+  ).bind(crypto.randomUUID(), c.get('user').id, id, c.get('user').departmentId).run();
+  return c.json({ alertId: id, status: 'OPEN', priority: 'CRITICAL' }, 201);
+});
+
+app.post('/:id/complete', async c => {
+  const owned = await getOwnedSession(c, c.req.param('id'));
+  if (owned.error) return owned.error;
+  const session = owned.session!;
+  if (!['ACTIVE', 'PLANNED', 'PAUSED'].includes(session.status)) return c.json({ error: { code: 'INVALID_STATE', message: 'Session is already closed' } }, 409);
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(
+    `UPDATE safety_sessions SET status='COMPLETED',ended_at=?,updated_at=? WHERE id=?`
+  ).bind(now, now, session.id).run();
+  await c.env.DB.prepare(
+    `UPDATE safety_checkins SET responded_at=?,response='SAFE' WHERE session_id=? AND responded_at IS NULL`
+  ).bind(now, session.id).run();
+  await c.env.DB.prepare(
+    `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,department_id) VALUES (?,?,'SESSION_COMPLETED','SAFETY_SESSION',?,?)`
+  ).bind(crypto.randomUUID(), c.get('user').id, session.id, c.get('user').departmentId).run();
+  return c.json({ id: session.id, status: 'COMPLETED' });
+});
+
 export default app;
