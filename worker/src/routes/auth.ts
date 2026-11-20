@@ -119,7 +119,7 @@ app.post('/bootstrap', async c => {
     !safeEqual(configuredSecret, suppliedSecret)
   ) {
     return c.json({
-      error: { code: 'NOT_FOUND', message: 'Bootstrap is unavailable' },
+      error: { code: 'NOT_FOUND', message: 'Бастапқы баптау қолжетімсіз' },
     }, 404);
   }
 
@@ -131,7 +131,7 @@ app.post('/bootstrap', async c => {
     return c.json({
       error: {
         code: 'BOOTSTRAP_CLOSED',
-        message: 'An account already exists; bootstrap is permanently closed',
+        message: 'Әкімші тіркелгісі бұрыннан бар. Бастапқы баптау жабық.',
       },
     }, 409);
   }
@@ -143,7 +143,7 @@ app.post('/bootstrap', async c => {
     return c.json({
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'Provide a valid email, full name and password of at least 12 characters',
+        message: 'Жарамды электрондық пошта, аты-жөні және кемінде 12 таңбалы құпиясөз енгізіңіз',
       },
     }, 400);
   }
@@ -153,7 +153,7 @@ app.post('/bootstrap', async c => {
     return c.json({
       error: {
         code: 'AUTH_NOT_CONFIGURED',
-        message: 'Authentication is not configured',
+        message: 'Кіру жүйесі бапталмаған',
       },
     }, 503);
   }
@@ -163,7 +163,7 @@ app.post('/bootstrap', async c => {
   const id = crypto.randomUUID();
 
   await c.env.DB.prepare(
-    "INSERT INTO users (id,email,password_hash,full_name,role_id,status,locale) VALUES (?,?,?,?,'role_admin','ACTIVE','ru')",
+    "INSERT INTO users (id,email,password_hash,full_name,role_id,status,locale) VALUES (?,?,?,?,'role_admin','ACTIVE','kk')",
   ).bind(
     id,
     email,
@@ -194,7 +194,7 @@ app.post('/login', async c => {
     return c.json({
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'Enter a valid email and password',
+        message: 'Электрондық пошта мен құпиясөзді дұрыс енгізіңіз',
       },
     }, 400);
   }
@@ -213,7 +213,7 @@ app.post('/login', async c => {
     return c.json({
       error: {
         code: 'INVALID_CREDENTIALS',
-        message: 'Email or password is incorrect',
+        message: 'Электрондық пошта немесе құпиясөз қате',
       },
     }, 401);
   }
@@ -223,7 +223,7 @@ app.post('/login', async c => {
     return c.json({
       error: {
         code: 'AUTH_NOT_CONFIGURED',
-        message: 'Authentication is not configured. Contact your administrator.',
+        message: 'Кіру жүйесі бапталмаған. Contact your administrator.',
       },
     }, 503);
   }
@@ -267,7 +267,7 @@ app.post('/login', async c => {
 app.get('/me', authMiddleware, c => c.json({ user: c.get('user') }));
 app.post('/logout', authMiddleware, c => c.json({
   ok: true,
-  message: 'Client session cleared',
+  message: 'Жүйеден шығу орындалды',
 }));
 
 export default app;
