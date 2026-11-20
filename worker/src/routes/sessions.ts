@@ -69,7 +69,7 @@ app.get('/', async c => {
   if (user.role === 'EMPLOYEE') {
     stmt = c.env.DB.prepare(base + ' WHERE s.employee_id=? ORDER BY s.created_at DESC LIMIT 100').bind(user.id);
   } else if (user.role === 'SUPERVISOR') {
-    stmt = c.env.DB.prepare(base + ' JOIN users e ON e.id=s.employee_id WHERE e.supervisor_id=? ORDER BY s.created_at DESC LIMIT 200').bind(user.departmentId || '');
+    stmt = c.env.DB.prepare(base + ' JOIN users e ON e.id=s.employee_id WHERE e.supervisor_id=? ORDER BY s.created_at DESC LIMIT 200').bind(user.id);
   } else {
     stmt = c.env.DB.prepare(base + ' ORDER BY s.created_at DESC LIMIT 200');
   }
