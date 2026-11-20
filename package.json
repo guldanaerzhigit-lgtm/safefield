@@ -12,7 +12,9 @@
     "worker:dev": "wrangler dev --config wrangler.toml",
     "worker:deploy": "wrangler deploy --config wrangler.toml",
     "db:local": "wrangler d1 migrations apply safefield-db --local --config wrangler.toml",
-    "db:remote": "wrangler d1 migrations apply safefield-db --remote --config wrangler.toml"
+    "db:remote": "wrangler d1 migrations apply safefield-db --remote --config wrangler.toml",
+    "scheduler:deploy": "wrangler deploy --config wrangler.scheduler.toml",
+    "scheduler:dev": "wrangler dev --config wrangler.scheduler.toml"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.5",
