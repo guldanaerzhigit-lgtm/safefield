@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, MapPin, Plus, RefreshCw, ShieldAlert, ShieldCheck, Siren } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { pendingSafetyEvents, queueSafetyEvent, removeSafetyEvent } from '../utils/offlineQueue';
+import { queueSafetyEvent } from '../utils/offlineQueue';
 
 type SafetySession = {
   id: string; title: string; site_address: string; activity_name: string; status: string;
@@ -52,9 +52,7 @@ export function SessionsPage() {
     catch (e) { setError(e instanceof Error ? e.message : 'Сессияларды жүктеу мүмкін болмады'); }
     finally { setLoading(false); }
   }
-  useEffect(() => { void load(); const sync=()=>{void flushOfflineQueue();}; window.addEventListener('online',sync); if(navigator.onLine)sync(); return()=>window.removeEventListener('online',sync); }, []);
-
-  async function flushOfflineQueue(){ if(!navigator.onLine)return; try{const events=await pendingSafetyEvents();let sent=0;for(const item of events){try{await api(item.path,{method:item.method,body:JSON.stringify(item.body)});await removeSafetyEvent(item.id);sent++;}catch{break;}}if(sent)setNotice(sent+' офлайн оқиға серверге жіберілді.');}catch(e){console.error('Офлайн кезекті синхрондау қатесі',e);} }
+  useEffect(() => { void load(); }, []);
 
   async function createSession(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setError(''); setNotice('');
