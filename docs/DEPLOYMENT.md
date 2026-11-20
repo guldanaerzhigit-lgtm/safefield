@@ -6,6 +6,7 @@
 - Cloudflare Pages project: `safefield`
 - Production URL: `https://safefield.pages.dev`
 - API is deployed as a Pages Function from `functions/api/[[path]].ts`; it reuses the Hono API in `worker/src`.
+- Scheduled check-in monitor: Worker `safefield-scheduler`, cron `*/5 * * * *`, source `worker/src/scheduler.ts`.
 
 ## Required production secrets
 Configure these as encrypted Pages production environment variables:
@@ -15,7 +16,7 @@ Configure these as encrypted Pages production environment variables:
 Never put either secret in `.env`, Vite variables, GitHub source files, or the repository.
 
 ## Pages bindings and variables
-Production Functions need D1 binding `DB` pointing to database UUID `7774bdc4-e46c-4e6f-a7e7-8ecf18dc47aa`.
+Production Functions need D1 binding `DB` pointing to database UUID `7774bdc4-e46c-4e6f-a7e7-8ecf18dc47aa`. The scheduled Worker uses the same D1 binding and records overdue check-ins as `MISSED_CHECKIN` alerts, then creates escalation queue entries for supervisor, dispatcher and safety manager.
 Set the build variable `VITE_API_BASE_URL=/api/v1`. The API and UI use the same origin, so browser CORS is not required for production.
 
 ## First administrator
