@@ -5,9 +5,9 @@ import { api } from '../services/api';
 type Employee={id:string;fullName:string;phone:string|null;departmentId:string|null;departmentName:string|null;sessionId:string|null;sessionTitle:string|null;siteAddress:string|null;sessionStatus:string|null;startedAt:string|null;latitude:number|null;longitude:number|null;accuracy:number|null;locationAt:string|null};
 type Alert={id:string;alertType:string;priority:string;status:string;message:string|null;latitude:number|null;longitude:number|null;createdAt:string;employeeName:string};
 export function MonitoringPage(){
- const [employees,setEmployees]=useState<Employee[]>([]);const [alerts,setAlerts]=useState<Alert[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [query,setQuery]=useState('');const [filter,setFilter]=useState('ALL');
- const load=useCallback(async()=>{setLoading(true);setError('');try{const r=await api<{employees:Employee[];alerts:Alert[]}>('/monitoring');setEmployees(r.employees);setAlerts(r.alerts);}catch(e){setError(e instanceof Error?e.message:'Мониторинг деректерін жүктеу мүмкін болмады');}finally{setLoading(false);}},[]);
- useEffect(()=>{void load();},[load]);
+ const [employees,setEmployees]=useState<Employee[]>([]);const [alerts,setAlerts]=useState<Alert[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [query,setQuery]=useState('');const [filter,setFilter]=useState('ALL');const [updatedAt,setUpdatedAt]=useState('');
+ const load=useCallback(async()=>{setLoading(true);setError('');try{const r=await api<{employees:Employee[];alerts:Alert[]}>('/monitoring');setEmployees(r.employees);setAlerts(r.alerts);setUpdatedAt(new Date().toISOString());}catch(e){setError(e instanceof Error?e.message:'Мониторинг деректерін жүктеу мүмкін болмады');}finally{setLoading(false);}},[]);
+ useEffect(()=>{void load();const timer=setInterval(()=>void load(),30000);return()=>clearInterval(timer);},[load]);
  const visible=useMemo(()=>employees.filter(e=>(filter==='ALL'||(filter==='ACTIVE'?!!e.sessionId:!e.sessionId))&&(!query||[e.fullName,e.departmentName,e.sessionTitle,e.siteAddress].filter(Boolean).join(' ').toLowerCase().includes(query.toLowerCase()))),[employees,filter,query]);
  const mapUrl=(e:Employee)=>e.latitude!=null&&e.longitude!=null?'https://www.openstreetmap.org/?mlat='+e.latitude+'&mlon='+e.longitude+'#map=16/'+e.latitude+'/'+e.longitude:null;
  const date=(v:string|null)=>v?new Intl.DateTimeFormat('kk-KZ',{dateStyle:'short',timeStyle:'short'}).format(new Date(v)):'Орналасқан жері әлі алынбаған';
