@@ -15,6 +15,7 @@ import notificationRoutes from './routes/notifications';
 import zoneRoutes from './routes/zones';
 import analyticsRoutes from './routes/analytics';
 import workOrderRoutes from './routes/workOrders';
+import assetRoutes from './routes/assets';
 const app = new Hono<{ Bindings: Env }>();
 app.use('*', logger());
 app.use('/api/*', cors({ origin: (origin, c) => { const allowed = (c.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((item: string) => item.trim()); return allowed.includes(origin) ? origin : ''; }, allowMethods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'], allowHeaders: ['Content-Type','Authorization'], maxAge: 600 }));
@@ -22,15 +23,8 @@ app.onError(errorHandler);
 app.get('/health', (c) => c.json({ ok: true, service: 'safefield-api', version: 'v1', timestamp: new Date().toISOString() }));
 app.get('/health/ready', async (c) => { try { await c.env.DB.prepare('SELECT 1 AS ok').first(); return c.json({ ok: true, database: 'connected' }); } catch { return c.json({ ok: false, database: 'unavailable' }, 503); } });
 const v1 = new Hono<{ Bindings: Env }>();
-v1.get('/health', async (c) => {
-  try {
-    await c.env.DB.prepare('SELECT 1 AS ok').first();
-    return c.json({ ok: true, service: 'safefield-api', database: 'connected', version: 'v1', timestamp: new Date().toISOString() });
-  } catch {
-    return c.json({ ok: false, service: 'safefield-api', database: 'unavailable' }, 503);
-  }
-});
-v1.route('/auth', authRoutes); v1.route('/dashboard', dashboardRoutes); v1.route('/sessions', sessionRoutes); v1.route('/alerts', alertRoutes); v1.route('/admin', adminRoutes); v1.route('/team', teamRoutes); v1.route('/monitoring', monitoringRoutes); v1.route('/dispatch', dispatchRoutes); v1.route('/notifications', notificationRoutes); v1.route('/zones', zoneRoutes); v1.route('/analytics', analyticsRoutes); v1.route('/work-orders', workOrderRoutes);
+v1.get('/health', async (c) => { try { await c.env.DB.prepare('SELECT 1 AS ok').first(); return c.json({ ok: true, service: 'safefield-api', database: 'connected', version: 'v1', timestamp: new Date().toISOString() }); } catch { return c.json({ ok: false, service: 'safefield-api', database: 'unavailable' }, 503); } });
+v1.route('/auth', authRoutes); v1.route('/dashboard', dashboardRoutes); v1.route('/sessions', sessionRoutes); v1.route('/alerts', alertRoutes); v1.route('/admin', adminRoutes); v1.route('/team', teamRoutes); v1.route('/monitoring', monitoringRoutes); v1.route('/dispatch', dispatchRoutes); v1.route('/notifications', notificationRoutes); v1.route('/zones', zoneRoutes); v1.route('/analytics', analyticsRoutes); v1.route('/work-orders', workOrderRoutes); v1.route('/assets', assetRoutes);
 app.route('/api/v1', v1);
 app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
 export default { fetch: app.fetch };
