@@ -59,6 +59,27 @@ async function enqueueEscalations(c: Context<AppEnv>, alertId: string, firstDela
   }
 }
 
+async function evaluateSafetyZones(c: Context<AppEnv>, sessionId: string, latitude: number, longitude: number) {
+  const user = c.get('user');
+  const zones = await c.env.DB.prepare("SELECT id,name,zone_type AS zoneType,center_lat AS centerLat,center_lng AS centerLng,radius_meters AS radiusMeters FROM safety_zones WHERE is_active=1 AND (department_id IS NULL OR department_id=?)").bind(user.departmentId || '').all<{id:string;name:string;zoneType:string;centerLat:number;centerLng:number;radiusMeters:number}>();
+  const radians = (value:number) => value * Math.PI / 180;
+  for (const zone of zones.results) {
+    if (zone.zoneType === 'SAFE') continue;
+    const dLat = radians(zone.centerLat - latitude);
+    const dLng = radians(zone.centerLng - longitude);
+    const a = Math.sin(dLat/2)**2 + Math.cos(radians(latitude))*Math.cos(radians(zone.centerLat))*Math.sin(dLng/2)**2;
+    const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    if (distance > zone.radiusMeters) continue;
+    const message = zone.zoneType === 'DANGER' ? 'Қызметкер қауіпті аймаққа кірді: ' + zone.name : 'Қызметкер ескерту аймағына кірді: ' + zone.name;
+    const existing = await c.env.DB.prepare("SELECT id FROM safety_alerts WHERE session_id=? AND alert_type='RISK_ZONE' AND status IN ('OPEN','ACKNOWLEDGED','IN_PROGRESS') AND message=? LIMIT 1").bind(sessionId,message).first();
+    if (existing) continue;
+    const alertId = crypto.randomUUID();
+    await c.env.DB.prepare("INSERT INTO safety_alerts(id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude) VALUES(?,?,?,'RISK_ZONE',?,'OPEN',?,?,?)").bind(alertId,sessionId,user.id,zone.zoneType==='DANGER'?'CRITICAL':'HIGH',message,latitude,longitude).run();
+    await enqueueEscalations(c,alertId,0);
+    await c.env.DB.prepare("INSERT INTO audit_logs(id,actor_user_id,action,resource_type,resource_id,department_id) VALUES(?,?,'SAFETY_ZONE_ALERT_CREATED','SAFETY_ALERT',?,?)").bind(crypto.randomUUID(),user.id,alertId,user.departmentId).run();
+  }
+}
+
 app.get('/', async c => {
   const user = c.get('user');
   const base = 'SELECT s.*, t.name AS activity_name FROM safety_sessions s JOIN safety_activity_types t ON t.id=s.activity_type_id';
@@ -114,6 +135,7 @@ app.post('/:id/start', async c => {
   if (location.data.latitude != null && location.data.longitude != null) {
     await c.env.DB.prepare(`INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,accuracy,recorded_at,source) VALUES (?,?,?,?,?,?,?,'GPS')`).bind(crypto.randomUUID(), c.get('user').id, session.id, location.data.latitude, location.data.longitude, location.data.accuracy ?? null, now.toISOString()).run();
   }
+  if (location.data.latitude != null && location.data.longitude != null) await evaluateSafetyZones(c,session.id,location.data.latitude,location.data.longitude);
   await c.env.DB.prepare(
     `INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id) VALUES (?,?,'SESSION_STARTED','SAFETY_SESSION',?)`
   ).bind(crypto.randomUUID(), c.get('user').id, session.id).run();
@@ -144,6 +166,7 @@ app.post('/:id/checkin', async c => {
       `INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,accuracy,recorded_at,source) VALUES (?,?,?,?,?,?,?,'GPS')`
     ).bind(crypto.randomUUID(), c.get('user').id, session.id, value.latitude, value.longitude, value.accuracy ?? null, now.toISOString()).run();
   }
+  if (value.latitude != null && value.longitude != null) await evaluateSafetyZones(c,session.id,value.latitude,value.longitude);
   if (value.response === 'NEED_HELP') {
     const alertId = crypto.randomUUID();
     await c.env.DB.prepare(
