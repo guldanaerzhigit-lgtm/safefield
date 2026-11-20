@@ -18,11 +18,11 @@ const activities = [
 function localDateTime(date: Date) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
-function getLocation(): Promise<{ latitude?: number; longitude?: number }> {
+function getLocation(): Promise<{ latitude?: number; longitude?: number; accuracy?: number }> {
   return new Promise(resolve => {
     if (!navigator.geolocation) return resolve({});
     navigator.geolocation.getCurrentPosition(
-      position => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+      position => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy }),
       () => resolve({}),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
     );
@@ -69,8 +69,8 @@ export function SessionsPage() {
     setError(''); setNotice('');
     try {
       if (action === 'sos' && !window.confirm('Диспетчерге шұғыл SOS сигналын жібересіз бе?')) return;
-      const location = action === 'checkin' || action === 'sos' || action === 'hidden-sos' ? await getLocation() : {};
-      const payload = action === 'checkin' ? { response: 'SAFE', ...location } : action === 'sos' || action === 'hidden-sos' ? { message: action === 'hidden-sos' ? 'Жасырын шұғыл көмек сигналы' : 'Шұғыл көмек қажет', hidden: action === 'hidden-sos', ...location } : undefined;
+      const location = action === 'start' || action === 'checkin' || action === 'sos' || action === 'hidden-sos' ? await getLocation() : {};
+      const payload = action === 'start' ? location : action === 'checkin' ? { response: 'SAFE', ...location } : action === 'sos' || action === 'hidden-sos' ? { message: action === 'hidden-sos' ? 'Жасырын шұғыл көмек сигналы' : 'Шұғыл көмек қажет', hidden: action === 'hidden-sos', ...location } : undefined;
       await api('/sessions/' + session.id + '/' + (action === 'hidden-sos' ? 'sos' : action), { method: 'POST', ...(payload ? { body: JSON.stringify(payload) } : {}) });
       const messages = { start: 'Жұмыс сессиясы басталды. Қауіпсіздікті растау уақыты жоспарланды.', checkin: 'Қауіпсіздік расталды. Келесі растау уақыты жоспарланды.', sos: 'SOS жіберілді. Қосымшаны жаппаңыз және компания нұсқаулығын орындаңыз.', 'hidden-sos': 'Жасырын көмек сигналы жіберілді. Қауіпсіз жерге өтіңіз.', complete: 'Жұмыс сессиясы аяқталды.' };
       setNotice(messages[action]); await load();
