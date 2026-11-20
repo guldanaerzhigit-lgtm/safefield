@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, BadgeCheck, Building2, Check, Mail, Phone, RefreshCw, Save, ShieldCheck, UserRound, Users } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Building2, Check, Mail, Phone, RefreshCw, Save, ShieldCheck, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 
