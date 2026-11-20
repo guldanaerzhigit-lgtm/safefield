@@ -1,5 +1,4 @@
-ALTER TABLE work_order_evidence ADD COLUMN storage_key TEXT;
-CREATE INDEX IF NOT EXISTS idx_work_order_evidence_storage_key ON work_order_evidence(storage_key);
+CREATE INDEX IF NOT EXISTS idx_work_order_evidence_object_key ON work_order_evidence(object_key);
 CREATE TABLE IF NOT EXISTS work_order_events (
   id TEXT PRIMARY KEY,
   work_order_id TEXT NOT NULL REFERENCES work_orders(id) ON DELETE CASCADE,
