@@ -1,0 +1,16 @@
+name = "safefield-scheduler"
+main = "worker/src/scheduler.ts"
+compatibility_date = "2026-11-20"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "safefield-db"
+database_id = "7774bdc4-e46c-4e6f-a7e7-8ecf18dc47aa"
+migrations_dir = "database/migrations"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[observability]
+enabled = true
