@@ -3,6 +3,8 @@ package kz.safefield.mobile;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
@@ -25,6 +27,7 @@ public class MainActivity extends Activity {
     private static final int REQUEST_PERMISSIONS = 410;
     private static final String APP_URL = "https://safefield.pages.dev";
     private WebView webView;
+    private final BroadcastReceiver gpsReceiver = new BroadcastReceiver() { @Override public void onReceive(android.content.Context context, Intent intent) { if (webView != null && "kz.safefield.GPS_LOCATION".equals(intent.getAction())) { double lat=intent.getDoubleExtra("latitude",0), lng=intent.getDoubleExtra("longitude",0), acc=intent.getDoubleExtra("accuracy",0); webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('safefield:location',{detail:{lat:"+lat+",lng:"+lng+",accuracy:"+acc+"}}));", null); } } };
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -68,11 +71,14 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new SafeFieldBridge(), "SafeFieldNative");
         setContentView(root);
         webView.loadUrl(APP_URL);
+        IntentFilter gpsFilter = new IntentFilter("kz.safefield.GPS_LOCATION");
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(gpsReceiver, gpsFilter, RECEIVER_NOT_EXPORTED); else registerReceiver(gpsReceiver, gpsFilter);
 
     }
 
     private class SafeFieldBridge {
         @android.webkit.JavascriptInterface public void startGps() { runOnUiThread(() -> requestTracking()); }
+        @android.webkit.JavascriptInterface public boolean isGpsActive() { return getSharedPreferences("safefield_gps", MODE_PRIVATE).getBoolean("active", false); }
         @android.webkit.JavascriptInterface public void stopGps() { runOnUiThread(() -> {
             stopService(new Intent(MainActivity.this, LocationForegroundService.class));
             Toast.makeText(MainActivity.this, "GPS бақылауы тоқтатылды", Toast.LENGTH_SHORT).show();
@@ -132,6 +138,8 @@ public class MainActivity extends Activity {
     }
 
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + 0.5f); }
+
+    @Override protected void onDestroy() { try { unregisterReceiver(gpsReceiver); } catch (Exception ignored) {} super.onDestroy(); }
 
     @Override public void onBackPressed() {
         if (webView != null && webView.canGoBack()) webView.goBack();
