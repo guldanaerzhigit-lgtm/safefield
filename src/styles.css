@@ -133,7 +133,7 @@
  .sidebar nav{gap:4px;padding-bottom:16px}
  .nav-item{min-height:46px;height:auto;padding:10px 12px;gap:12px;border-radius:9px;font-size:13px;line-height:1.35}
  .nav-item svg{width:19px;height:19px;flex:none}
- .sidebar-bottom{position:sticky;bottom:0;margin:8px -2px 0;padding:8px 2px 0;background:#111f38}
+ .sidebar-bottom{position:static;bottom:auto;flex:0 0 auto;margin:0 -2px;padding:8px 2px calc(4px + env(safe-area-inset-bottom));background:#111f38}
  .sidebar-user{padding-top:12px}
  .sidebar-backdrop.visible{display:block;position:fixed;inset:0;z-index:4;border:0;border-radius:0;background:#07132699;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
  .sidebar{z-index:6}
