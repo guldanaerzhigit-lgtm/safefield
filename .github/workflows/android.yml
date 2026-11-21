@@ -45,10 +45,11 @@ jobs:
         shell: bash
         run: |
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          BUILD_TOOLS="${ANDROID_HOME}/build-tools/35.0.0"
           test -s "$APK"
           ls -lh "$APK"
-          apksigner verify --verbose "$APK"
-          aapt dump badging "$APK" | head -n 20
+          "$BUILD_TOOLS/apksigner" verify --verbose "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | head -n 20
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
