@@ -11,6 +11,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.webkit.WebChromeClient;
+import android.webkit.GeolocationPermissions;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
@@ -85,10 +86,17 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
+        webView.getSettings().setGeolocationEnabled(true);
         webView.getSettings().setAllowFileAccess(false);
         webView.getSettings().setAllowContentAccess(false);
         webView.setWebViewClient(new WebViewClient());
-        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                boolean allowed = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                callback.invoke(origin, allowed, false);
+            }
+        });
         root.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
         webView.loadUrl(APP_URL);
@@ -146,7 +154,7 @@ public class MainActivity extends Activity {
                 Intent service = new Intent(this, LocationForegroundService.class);
                 service.putExtra(LocationForegroundService.EXTRA_TOKEN, token);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service); else startService(service);
-                status.setText("GPS бақылауы қосылды • экран сөнсе де жұмыс істейді");
+                status.setText("GPS іске қосылуда • координат күтілуде");
                 Toast.makeText(this, "GPS бақылауы қосылды", Toast.LENGTH_SHORT).show();
             } catch (Exception error) {
                 Toast.makeText(this, "Кіру дерегін оқу мүмкін болмады. Жүйеге қайта кіріңіз.", Toast.LENGTH_LONG).show();
