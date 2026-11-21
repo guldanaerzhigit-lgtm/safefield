@@ -175,3 +175,13 @@
  .geofence-map-head .refresh-btn{min-width:82px;padding:0 8px;font-size:10px}
  .geofence-map{height:340px}
 }
+
+
+/* Geofence map header: robust narrow-screen layout */
+.geofence-map-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:start;column-gap:12px;min-width:0;width:100%}
+.geofence-map-head>div{min-width:0;width:100%}
+.geofence-map-head h2{display:flex;align-items:center;gap:7px;min-width:0;white-space:normal;overflow-wrap:anywhere;font-size:clamp(12px,3.4vw,14px);line-height:1.35}
+.geofence-map-head h2 svg{flex:0 0 17px}
+.geofence-map-head p{min-width:0;overflow-wrap:anywhere;white-space:normal}
+.geofence-map-head button.refresh-btn{box-sizing:border-box;width:auto!important;min-width:88px;max-width:100%;height:38px;min-height:38px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:11px;flex-shrink:0}
+@media(max-width:380px){.geofence-map-head{column-gap:7px}.geofence-map-head button.refresh-btn{min-width:78px;padding:0 7px;font-size:10px}}
