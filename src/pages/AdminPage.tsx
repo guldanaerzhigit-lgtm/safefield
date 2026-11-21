@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Activity, ArrowLeft, Building2, Check, CircleUserRound, Plus, RefreshCw, Shield, UserPlus, Users } from 'lucide-react';
+import { Activity, ArrowLeft, Building2, Check, Plus, RefreshCw, Shield, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { useAuthStore } from '../stores/authStore';
 
 type Department={id:string;name:string;code:string;parentId:string|null;isActive:number;employeeCount:number};
 type UserRow={id:string;email:string;fullName:string;phone:string|null;status:string;role:string;departmentId:string|null;departmentName:string|null;supervisorId:string|null;supervisorName:string|null;lastLoginAt:string|null};
@@ -11,7 +10,7 @@ type AuditRow={id:string;action:string;resourceType:string;resourceId:string|nul
 type Tab='users'|'departments'|'audit';
 const roles=[{value:'EMPLOYEE',label:'Қызметкер'},{value:'SUPERVISOR',label:'Топ жетекшісі'},{value:'DISPATCHER',label:'Диспетчер'},{value:'SAFETY_MANAGER',label:'Қауіпсіздік менеджері'},{value:'ADMIN',label:'Әкімші'}];
 export function AdminPage(){
- const user=useAuthStore(s=>s.user);const [tab,setTab]=useState<Tab>('users');const [users,setUsers]=useState<UserRow[]>([]);const [departments,setDepartments]=useState<Department[]>([]);const [logs,setLogs]=useState<AuditRow[]>([]);const [overview,setOverview]=useState({users:0,departments:0,invited:0,inactive:0});const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [notice,setNotice]=useState('');
+ const [tab,setTab]=useState<Tab>('users');const [users,setUsers]=useState<UserRow[]>([]);const [departments,setDepartments]=useState<Department[]>([]);const [logs,setLogs]=useState<AuditRow[]>([]);const [overview,setOverview]=useState({users:0,departments:0,invited:0,inactive:0});const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [notice,setNotice]=useState('');
  const [showUser,setShowUser]=useState(false);const [showDepartment,setShowDepartment]=useState(false);
  const [form,setForm]=useState({fullName:'',email:'',phone:'',password:'',role:'EMPLOYEE',departmentId:'',supervisorId:''});
  const [depForm,setDepForm]=useState({name:'',code:'',parentId:''});
@@ -22,7 +21,7 @@ export function AdminPage(){
  const updateUser=async(id:string,patch:Partial<UserRow>)=>{setError('');try{await api('/admin/users/'+id,{method:'PATCH',body:JSON.stringify(patch)});setNotice('Қызметкер деректері сақталды.');await load();}catch(err){setError(err instanceof Error?err.message:'Қызметкер деректерін өзгерту мүмкін болмады');}};
  const toggleDepartment=async(d:Department)=>{try{await api('/admin/departments/'+d.id,{method:'PATCH',body:JSON.stringify({isActive:!d.isActive})});setNotice('Бөлімше күйі жаңартылды.');await load();}catch(err){setError(err instanceof Error?err.message:'Бөлімше күйін жаңарту мүмкін болмады');}};
  const fmt=(s:string|null)=>s?new Date(s).toLocaleString('kk-KZ',{dateStyle:'short',timeStyle:'short'}):'—';
- return <div className="admin-shell"><header className="admin-top"><Link to="/" className="admin-back"><ArrowLeft size={16}/> Басты бетке</Link><div className="admin-brand"><Shield size={19}/> SAFEFIELD <span>ӘКІМШІ</span></div><div className="admin-user"><CircleUserRound size={17}/>{user?.fullName||'Әкімші'}</div></header><main className="admin-content"><div className="admin-heading"><div><div className="eyebrow light">БАСҚАРУ ОРТАЛЫҒЫ / ӘКІМШІЛЕНДІРУ</div><h1>Әкімшілендіру</h1><p>Пайдаланушыларды, бөлімшелерді, рөлдерді және жүйе әрекеттері журналын басқару.</p></div><button className="admin-refresh" onClick={()=>void load()}><RefreshCw size={15}/> Жаңарту</button></div>
+ return <div className="admin-shell"><header className="admin-top"><Link to="/" className="admin-back"><ArrowLeft size={16}/> Басты бетке</Link><div className="admin-brand"><Shield size={19}/> SAFEFIELD <span>ӘКІМШІ</span></div></header><main className="admin-content"><div className="admin-heading"><div><div className="eyebrow light">БАСҚАРУ ОРТАЛЫҒЫ / ӘКІМШІЛЕНДІРУ</div><h1>Әкімшілендіру</h1><p>Пайдаланушыларды, бөлімшелерді, рөлдерді және жүйе әрекеттері журналын басқару.</p></div><button className="admin-refresh" onClick={()=>void load()}><RefreshCw size={15}/> Жаңарту</button></div>
  {error&&<div className="admin-error">{error}</div>}{notice&&<div className="admin-notice"><Check size={15}/>{notice}</div>}
  <section className="admin-stats"><article><Users size={18}/><b>{overview.users}</b><span>Қызметкерлер саны</span></article><article><Building2 size={18}/><b>{overview.departments}</b><span>Бөлімшелер</span></article><article><UserPlus size={18}/><b>{overview.invited}</b><span>Белсендіруді күтуде</span></article><article><Shield size={18}/><b>{overview.inactive}</b><span>Өшірілген тіркелгілер</span></article></section>
  <div className="admin-tabs"><button className={tab==='users'?'active':''} onClick={()=>setTab('users')}><Users size={16}/>Қызметкерлер</button><button className={tab==='departments'?'active':''} onClick={()=>setTab('departments')}><Building2 size={16}/>Бөлімшелер</button><button className={tab==='audit'?'active':''} onClick={()=>setTab('audit')}><Activity size={16}/>Әрекеттер журналы</button></div>
