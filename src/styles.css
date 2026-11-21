@@ -119,8 +119,9 @@
 /* Mobile-first navigation drawer and casual copy deterrent */
 .sidebar-backdrop{display:none}
 .app-shell{-webkit-tap-highlight-color:transparent}
-.app-shell :not(input):not(textarea):not(select):not([contenteditable="true"]){-webkit-user-select:none;user-select:none}
-.app-shell input,.app-shell textarea,.app-shell select,.app-shell [contenteditable="true"]{-webkit-user-select:text;user-select:text}
+.app-shell{-webkit-user-select:none;user-select:none}
+.app-shell input,.app-shell textarea,.app-shell select,.app-shell [contenteditable="true"],.app-shell [contenteditable="true"] *{-webkit-user-select:text;user-select:text}
+.app-shell button:focus-visible,.app-shell a:focus-visible{outline:2px solid #72b7f0;outline-offset:3px}
 @media(max-width:700px){
  .sidebar{width:min(86vw,320px);max-width:320px;padding:calc(16px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
  .sidebar-brand{display:flex;align-items:center;gap:10px;padding:0 6px 22px;min-height:42px}
