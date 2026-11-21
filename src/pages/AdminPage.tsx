@@ -3,7 +3,6 @@ import type { FormEvent } from 'react';
 import { Activity, ArrowLeft, Building2, Check, Plus, RefreshCw, Shield, UserPlus, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { useAuthStore } from '../stores/authStore';
 
 type Department={id:string;name:string;code:string;parentId:string|null;isActive:number;employeeCount:number};
 type UserRow={id:string;email:string;fullName:string;phone:string|null;status:string;role:string;departmentId:string|null;departmentName:string|null;supervisorId:string|null;supervisorName:string|null;lastLoginAt:string|null};
@@ -11,7 +10,7 @@ type AuditRow={id:string;action:string;resourceType:string;resourceId:string|nul
 type Tab='users'|'departments'|'audit';
 const roles=[{value:'EMPLOYEE',label:'Қызметкер'},{value:'SUPERVISOR',label:'Топ жетекшісі'},{value:'DISPATCHER',label:'Диспетчер'},{value:'SAFETY_MANAGER',label:'Қауіпсіздік менеджері'},{value:'ADMIN',label:'Әкімші'}];
 export function AdminPage(){
- const user=useAuthStore(s=>s.user);const [tab,setTab]=useState<Tab>('users');const [users,setUsers]=useState<UserRow[]>([]);const [departments,setDepartments]=useState<Department[]>([]);const [logs,setLogs]=useState<AuditRow[]>([]);const [overview,setOverview]=useState({users:0,departments:0,invited:0,inactive:0});const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [notice,setNotice]=useState('');
+ const [tab,setTab]=useState<Tab>('users');const [users,setUsers]=useState<UserRow[]>([]);const [departments,setDepartments]=useState<Department[]>([]);const [logs,setLogs]=useState<AuditRow[]>([]);const [overview,setOverview]=useState({users:0,departments:0,invited:0,inactive:0});const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [notice,setNotice]=useState('');
  const [showUser,setShowUser]=useState(false);const [showDepartment,setShowDepartment]=useState(false);
  const [form,setForm]=useState({fullName:'',email:'',phone:'',password:'',role:'EMPLOYEE',departmentId:'',supervisorId:''});
  const [depForm,setDepForm]=useState({name:'',code:'',parentId:''});
