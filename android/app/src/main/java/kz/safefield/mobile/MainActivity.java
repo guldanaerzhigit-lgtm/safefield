@@ -51,38 +51,6 @@ public class MainActivity extends Activity {
             return insets;
         });
 
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.VERTICAL);
-        bar.setPadding(dp(14), dp(10), dp(14), dp(10));
-        bar.setBackgroundColor(Color.rgb(12, 29, 51));
-
-        TextView brand = new TextView(this);
-        brand.setText("SAFEFIELD  •  ҚАУІПСІЗ ЖҰМЫС");
-        brand.setTextColor(Color.WHITE);
-        brand.setTextSize(14);
-        brand.setGravity(Gravity.CENTER_VERTICAL);
-        bar.addView(brand);
-
-        status = new TextView(this);
-        status.setText("GPS бақылауы өшірулі");
-        status.setTextColor(Color.rgb(190, 208, 228));
-        status.setTextSize(12);
-        status.setPadding(0, dp(5), 0, dp(8));
-        bar.addView(status);
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button start = new Button(this);
-        start.setText("GPS-ті қосу");
-        Button stop = new Button(this);
-        stop.setText("Тоқтату");
-        actions.addView(start, new LinearLayout.LayoutParams(0, dp(46), 1));
-        LinearLayout.LayoutParams stopParams = new LinearLayout.LayoutParams(0, dp(46), 1);
-        stopParams.setMargins(dp(8), 0, 0, 0);
-        actions.addView(stop, stopParams);
-        bar.addView(actions);
-        root.addView(bar);
-
         webView = new WebView(this);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
@@ -97,7 +65,8 @@ public class MainActivity extends Activity {
                 callback.invoke(origin, allowed, false);
             }
         });
-        root.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(webView, new LinearLayout.LayoutParams(-1, -1));
+        webView.addJavascriptInterface(new SafeFieldBridge(), "SafeFieldNative");
         setContentView(root);
         webView.loadUrl(APP_URL);
 
@@ -107,6 +76,14 @@ public class MainActivity extends Activity {
             status.setText("GPS бақылауы тоқтатылды");
             Toast.makeText(this, "Геолокация жіберу тоқтатылды", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private class SafeFieldBridge {
+        @android.webkit.JavascriptInterface public void startGps() { runOnUiThread(() -> requestTracking()); }
+        @android.webkit.JavascriptInterface public void stopGps() { runOnUiThread(() -> {
+            stopService(new Intent(MainActivity.this, LocationForegroundService.class));
+            Toast.makeText(MainActivity.this, "GPS бақылауы тоқтатылды", Toast.LENGTH_SHORT).show();
+        }); }
     }
 
     private void requestTracking() {
