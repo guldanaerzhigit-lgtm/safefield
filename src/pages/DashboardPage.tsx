@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, AlertTriangle, BarChart3, Bell, ChevronDown, Clock3, Compass, ClipboardList, QrCode, LogOut, MapPin, Menu, ShieldCheck, Users, X, RadioTower, UserRound, UserPlus } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Clock3, Compass, ClipboardList, QrCode, LogOut, MapPin, Menu, ShieldCheck, Users, X, RadioTower, UserRound, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
