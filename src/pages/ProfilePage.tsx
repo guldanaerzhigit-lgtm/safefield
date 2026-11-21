@@ -3,7 +3,7 @@ import { ArrowLeft, BadgeCheck, Bell, Building2, Check, LockKeyhole, Mail, MapPi
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 
-declare global { interface Window { SafeFieldNative?: { startGps: () => void; stopGps: () => void }; } }
+declare global { interface Window { SafeFieldNative?: { startGps: () => void; stopGps: () => void; isGpsActive: () => boolean }; } }
 type Profile={id:string;email:string;fullName:string;phone:string|null;role:string;roleName:string;departmentId:string|null;departmentName:string|null;supervisorId:string|null;supervisorName:string|null;emergencyContactName:string|null;emergencyContactPhone:string|null;safetyBriefingStatus:string|null;safetyBriefingAt:string|null;status:string;avatarUrl:string|null};
 const roleNames:Record<string,string>={EMPLOYEE:'Қызметкер',SUPERVISOR:'Топ жетекшісі',DISPATCHER:'Диспетчер',SAFETY_MANAGER:'Қауіпсіздік менеджері',ADMIN:'Әкімші'};
 export function ProfilePage(){
