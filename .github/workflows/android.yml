@@ -24,11 +24,22 @@ jobs:
           distribution: temurin
           java-version: "17"
       - name: Install Android SDK packages
+        shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "$ANDROID_HOME/cmdline-tools/16.0/bin" >> "$GITHUB_PATH"
-          yes | "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" --licenses
-          "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}"
+          SDKMANAGER="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}" -type f -name sdkmanager 2>/dev/null | head -n 1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found; available SDK directories:"
+            ls -la "${ANDROID_HOME:-/usr/local/lib/android/sdk}" || true
+            find /usr/local/lib/android -maxdepth 5 -type d 2>/dev/null | head -n 100
+            exit 1
+          fi
+          echo "Using sdkmanager: $SDKMANAGER"
+          SDK_BIN="$(dirname "$SDKMANAGER")"
+          echo "$SDK_BIN" >> "$GITHUB_PATH"
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
