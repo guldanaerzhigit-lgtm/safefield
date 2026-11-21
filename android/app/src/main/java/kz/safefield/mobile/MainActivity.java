@@ -25,7 +25,6 @@ public class MainActivity extends Activity {
     private static final int REQUEST_PERMISSIONS = 410;
     private static final String APP_URL = "https://safefield.pages.dev";
     private WebView webView;
-    private TextView status;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,12 +69,6 @@ public class MainActivity extends Activity {
         setContentView(root);
         webView.loadUrl(APP_URL);
 
-        start.setOnClickListener(v -> requestTracking());
-        stop.setOnClickListener(v -> {
-            stopService(new Intent(this, LocationForegroundService.class));
-            status.setText("GPS бақылауы тоқтатылды");
-            Toast.makeText(this, "Геолокация жіберу тоқтатылды", Toast.LENGTH_SHORT).show();
-        });
     }
 
     private class SafeFieldBridge {
@@ -131,7 +124,6 @@ public class MainActivity extends Activity {
                 Intent service = new Intent(this, LocationForegroundService.class);
                 service.putExtra(LocationForegroundService.EXTRA_TOKEN, token);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service); else startService(service);
-                status.setText("GPS іске қосылуда • координат күтілуде");
                 Toast.makeText(this, "GPS бақылауы қосылды", Toast.LENGTH_SHORT).show();
             } catch (Exception error) {
                 Toast.makeText(this, "Кіру дерегін оқу мүмкін болмады. Жүйеге қайта кіріңіз.", Toast.LENGTH_LONG).show();
