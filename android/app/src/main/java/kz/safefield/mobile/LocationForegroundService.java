@@ -51,6 +51,7 @@ public class LocationForegroundService extends Service implements LocationListen
             stopSelf();
             return START_NOT_STICKY;
         }
+        getSharedPreferences("safefield_gps", MODE_PRIVATE).edit().putBoolean("active", true).apply();
         startForeground(NOTIFICATION_ID, buildNotification("Геолокация жіберілуде"));
         startLocationUpdates();
         return START_STICKY;
@@ -76,6 +77,10 @@ public class LocationForegroundService extends Service implements LocationListen
     }
 
     @Override public void onLocationChanged(Location location) {
+        Intent update = new Intent("kz.safefield.GPS_LOCATION");
+        update.setPackage(getPackageName());
+        update.putExtra("latitude", location.getLatitude()); update.putExtra("longitude", location.getLongitude()); update.putExtra("accuracy", (double) location.getAccuracy());
+        sendBroadcast(update);
         final String currentToken = token;
         network.execute(() -> sendLocation(currentToken, location));
     }
@@ -140,6 +145,7 @@ public class LocationForegroundService extends Service implements LocationListen
     }
 
     @Override public void onDestroy() {
+        getSharedPreferences("safefield_gps", MODE_PRIVATE).edit().putBoolean("active", false).apply();
         if (locationManager != null) locationManager.removeUpdates(this);
         network.shutdown();
         super.onDestroy();
