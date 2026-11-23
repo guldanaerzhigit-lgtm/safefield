@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, type AuthVariables } from '../middleware/auth';
 import type { Env } from '../types';
+import { sendWebPush } from '../utils/push';
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 app.use('*', authMiddleware);
@@ -66,6 +67,23 @@ app.post('/', async c => {
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,u.id,u.departmentId,d.category,d.severity,d.title,d.description,d.latitude ?? null,d.longitude ?? null,d.accuracy ?? null,evidenceKey,evidenceName,evidenceType).run();
     await c.env.DB.prepare('INSERT INTO safety_incident_history(id,incident_id,actor_id,action,to_status,note) VALUES(?,?,?,\'CREATED\',\'NEW\',?)').bind(crypto.randomUUID(),id,u.id,'Оқиға тіркелді').run();
     await c.env.DB.prepare('INSERT INTO audit_logs(id,actor_user_id,action,resource_type,resource_id,department_id,metadata_json) VALUES(?,?,?,?,?,?,?)').bind(crypto.randomUUID(),u.id,'INCIDENT_CREATED','SAFETY_INCIDENT',id,u.departmentId,JSON.stringify({category:d.category,severity:d.severity,hasEvidence:!!evidenceKey})).run();
+    const recipients = await c.env.DB.prepare(`SELECT DISTINCT u.id AS userId,ns.endpoint,ns.p256dh,ns.auth
+      FROM users u JOIN roles r ON r.id=u.role_id JOIN notification_subscriptions ns ON ns.user_id=u.id
+      WHERE u.status='ACTIVE' AND (
+        (r.code='SUPERVISOR' AND u.id=?)
+        OR (r.code IN ('DISPATCHER','SAFETY_MANAGER','ADMIN') AND (u.department_id=? OR r.code='ADMIN'))
+      )`).bind(u.supervisorId || '',u.departmentId || '').all<{userId:string;endpoint:string;p256dh:string;auth:string}>();
+    for (const recipient of recipients.results) {
+      try {
+        const response = await sendWebPush(c.env,recipient,{title:'Жаңа қауіпсіздік оқиғасы',body:d.title+' · '+d.severity,url:'/incidents'});
+        await c.env.DB.prepare("INSERT INTO notification_logs(id,user_id,channel,template_key,status,provider_message_id,error_message,sent_at) VALUES(?,?,'PUSH','INCIDENT_CREATED',?,?,?,?)")
+          .bind(crypto.randomUUID(),recipient.userId,response.ok?'SENT':'FAILED',response.headers.get('location'),response.ok?null:'Push service HTTP '+response.status,response.ok?new Date().toISOString():null).run();
+        if(response.status===404||response.status===410) await c.env.DB.prepare('DELETE FROM notification_subscriptions WHERE endpoint=?').bind(recipient.endpoint).run();
+      } catch(error) {
+        await c.env.DB.prepare("INSERT INTO notification_logs(id,user_id,channel,template_key,status,error_message) VALUES(?,?,'PUSH','INCIDENT_CREATED','FAILED',?)")
+          .bind(crypto.randomUUID(),recipient.userId,error instanceof Error?error.message:'Push delivery failed').run();
+      }
+    }
   } catch (error) {
     if (evidenceKey && c.env.EVIDENCE_BUCKET?.delete) await c.env.EVIDENCE_BUCKET.delete(evidenceKey);
     throw error;
