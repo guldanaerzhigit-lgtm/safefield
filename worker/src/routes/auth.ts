@@ -109,6 +109,50 @@ function safeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
+
+const publicRegisterSchema = z.object({
+  email: z.email().max(254),
+  fullName: z.string().trim().min(2).max(160),
+  phone: z.string().trim().max(40).optional(),
+  password: z.string().min(12).max(128),
+  role: z.enum(['EMPLOYEE','SUPERVISOR','DISPATCHER','SAFETY_MANAGER']),
+});
+
+function publicRegistrationEnabled(env: Env): boolean {
+  return env.PUBLIC_REGISTRATION_ENABLED === 'true';
+}
+
+app.get('/registration-status', c => c.json({
+  enabled: publicRegistrationEnabled(c.env),
+  roles: ['EMPLOYEE','SUPERVISOR','DISPATCHER','SAFETY_MANAGER'],
+}));
+
+app.post('/register', async c => {
+  if (!publicRegistrationEnabled(c.env)) {
+    return c.json({ error: { code: 'REGISTRATION_CLOSED', message: 'Ашық тіркелу уақытша жабық' } }, 403);
+  }
+  const parsed = publicRegisterSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Тіркеу деректерін тексеріңіз. Құпиясөз кемінде 12 таңба болуы керек.' } }, 400);
+  }
+  const data = parsed.data;
+  const email = data.email.trim().toLowerCase();
+  const existing = await c.env.DB.prepare('SELECT id FROM users WHERE email=? COLLATE NOCASE LIMIT 1').bind(email).first();
+  if (existing) return c.json({ error: { code: 'EMAIL_EXISTS', message: 'Бұл email арқылы тіркелгі бұрыннан бар' } }, 409);
+  const role = await c.env.DB.prepare("SELECT id FROM roles WHERE code=? AND code IN ('EMPLOYEE','SUPERVISOR','DISPATCHER','SAFETY_MANAGER')").bind(data.role).first<{id:string}>();
+  if (!role) return c.json({ error: { code: 'INVALID_ROLE', message: 'Бұл рөлге тіркелу мүмкін емес' } }, 400);
+  const id = crypto.randomUUID();
+  try {
+    await c.env.DB.prepare("INSERT INTO users(id,email,password_hash,full_name,phone,role_id,status,locale) VALUES(?,?,?,?,?,?,?,'kk')")
+      .bind(id,email,await hashPassword(data.password),data.fullName.trim(),data.phone?.trim() || null,role.id,data.role === 'EMPLOYEE' ? 'ACTIVE' : 'INVITED').run();
+  } catch {
+    return c.json({ error: { code: 'REGISTRATION_FAILED', message: 'Тіркелгі жасау мүмкін болмады. Email бұрын қолданылған болуы мүмкін.' } }, 409);
+  }
+  await c.env.DB.prepare("INSERT INTO audit_logs(id,actor_user_id,action,resource_type,resource_id,metadata_json) VALUES(?,?,'PUBLIC_REGISTRATION','USER',?,?)")
+    .bind(crypto.randomUUID(),id,id,JSON.stringify({role:data.role})).run();
+  return c.json({ ok:true, status: data.role === 'EMPLOYEE' ? 'ACTIVE' : 'INVITED', message: data.role === 'EMPLOYEE' ? 'Тіркелу сәтті аяқталды. Енді жүйеге кіре аласыз.' : 'Өтінім қабылданды. Таңдалған рөлді әкімші мақұлдағаннан кейін жүйеге кіре аласыз.' },201);
+});
+
 app.post('/bootstrap', async c => {
   const configuredSecret = c.env.BOOTSTRAP_SECRET;
   const suppliedSecret = c.req.header('x-bootstrap-secret') || '';
