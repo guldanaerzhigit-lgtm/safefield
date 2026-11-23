@@ -14,7 +14,7 @@ const roleLabels: Record<PublicRole,string> = {
 export function RegisterPage(){
  const [params]=useSearchParams();const token=params.get('token')||'';
  const [fullName,setFullName]=useState('');const [phone,setPhone]=useState('');const [email,setEmail]=useState('');const [role,setRole]=useState<PublicRole>('EMPLOYEE');const [password,setPassword]=useState('');const [confirm,setConfirm]=useState('');const [error,setError]=useState('');const [loading,setLoading]=useState(false);const [success,setSuccess]=useState(false);
- const [registrationEnabled,setRegistrationEnabled]=useState(false);const [checkingStatus,setCheckingStatus]=useState(!token);
+ const [registrationEnabled,setRegistrationEnabled]=useState(false);const [successMessage,setSuccessMessage]=useState('Тіркелгіңіз жасалды. Енді SafeField жүйесіне кіре аласыз.');const [checkingStatus,setCheckingStatus]=useState(!token);
  useEffect(()=>{if(token)return;api<{enabled:boolean}>('/auth/registration-status').then(result=>setRegistrationEnabled(result.enabled)).catch(()=>setRegistrationEnabled(false)).finally(()=>setCheckingStatus(false));},[token]);
  async function submit(e:React.FormEvent){
   e.preventDefault();setError('');
@@ -23,14 +23,14 @@ export function RegisterPage(){
   setLoading(true);
   try{
    if(token){await api('/invitations/accept',{method:'POST',body:JSON.stringify({token,fullName,phone,password})});}
-   else{await api('/auth/register',{method:'POST',body:JSON.stringify({email,fullName,phone,password,role})});}
+   else{const result=await api<{status:string;message:string}>('/auth/register',{method:'POST',body:JSON.stringify({email,fullName,phone,password,role})});setSuccessMessage(result.message);}
    setSuccess(true);
   }catch(e){setError(e instanceof Error?e.message:'Тіркелу мүмкін болмады');}
   finally{setLoading(false);}
  }
  const publicMode=!token&&registrationEnabled;
  return <main className="register-shell"><section className="register-card"><div className="register-brand"><span><ShieldCheck size={22}/></span><b>SAFEFIELD</b></div>
- {success?<div className="register-state success"><CheckCircle2 size={34}/><h1>Тіркелу аяқталды!</h1><p>Тіркелгіңіз жасалды. Енді SafeField жүйесіне кіре аласыз.</p><Link className="submit-button register-link" to="/login">Жүйеге кіру <ArrowRight size={17}/></Link></div>
+ {success?<div className="register-state success"><CheckCircle2 size={34}/><h1>Тіркелу аяқталды!</h1><p>{successMessage}</p><Link className="submit-button register-link" to="/login">Жүйеге кіру <ArrowRight size={17}/></Link></div>
  :!token&&checkingStatus?<div className="register-state"><ShieldCheck size={28}/><h1>Тіркелу тексерілуде</h1><p>Бір сәт күтіңіз…</p></div>
  :!token&&!publicMode?<div className="register-state"><ShieldCheck size={28}/><h1>Тіркелу уақытша жабық</h1><p>Ашық тіркелу қазір қолжетімсіз. Әкімші немесе топ жетекшісі жіберген шақыру сілтемесін пайдаланыңыз.</p><Link className="submit-button register-link" to="/login">Жүйеге кіру <ArrowRight size={17}/></Link></div>
  :<><div className="form-heading"><span className="form-icon"><UserRound size={19}/></span><h1>{publicMode?'Жаңа тіркелгі жасау':'Қызметкер тіркелгісі'}</h1><p>{publicMode?'Уақытша ашық тіркелу · Әкімші рөлі берілмейді':'Шақыру арқылы жеке кабинетіңізді ашыңыз'}</p></div>
