@@ -109,6 +109,45 @@ function safeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
+const publicRegisterSchema = z.object({
+  email: z.email().max(254),
+  fullName: z.string().trim().min(2).max(160),
+  phone: z.string().trim().max(40).optional(),
+  password: z.string().min(12).max(128),
+  role: z.enum(['EMPLOYEE', 'SUPERVISOR', 'DISPATCHER', 'SAFETY_MANAGER']),
+});
+
+app.post('/register', async c => {
+  const parsed = publicRegisterSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: { code: 'VALIDATION_ERROR', message: 'Мәліметтерді тексеріңіз. Құпиясөз кемінде 12 таңба болуы керек.' } }, 400);
+  }
+
+  const data = parsed.data;
+  const email = data.email.trim().toLowerCase();
+  const existing = await c.env.DB.prepare('SELECT id FROM users WHERE email=? COLLATE NOCASE LIMIT 1').bind(email).first();
+  if (existing) {
+    return c.json({ error: { code: 'EMAIL_EXISTS', message: 'Бұл email арқылы тіркелгі бұрыннан бар' } }, 409);
+  }
+
+  const role = await c.env.DB.prepare('SELECT id FROM roles WHERE code=?').bind(data.role).first<{ id: string }>();
+  if (!role) return c.json({ error: { code: 'INVALID_ROLE', message: 'Таңдалған рөл қолжетімсіз' } }, 400);
+
+  const id = crypto.randomUUID();
+  try {
+    await c.env.DB.prepare(
+      "INSERT INTO users (id,email,password_hash,full_name,phone,role_id,department_id,supervisor_id,status,locale) VALUES (?,?,?,?,?,?,NULL,NULL,'ACTIVE','kk')",
+    ).bind(id, email, await hashPassword(data.password), data.fullName, data.phone?.trim() || null, role.id).run();
+    await c.env.DB.prepare(
+      "INSERT INTO audit_logs (id,actor_user_id,action,resource_type,resource_id,metadata_json) VALUES (?,?,'PUBLIC_SELF_REGISTRATION','USER',?,?)",
+    ).bind(crypto.randomUUID(), id, id, JSON.stringify({ role: data.role, temporaryOpenRegistration: true })).run();
+  } catch {
+    return c.json({ error: { code: 'REGISTRATION_FAILED', message: 'Тіркелгі жасау мүмкін болмады. Қайталап көріңіз.' } }, 409);
+  }
+
+  return c.json({ ok: true, message: 'Тіркелу сәтті аяқталды. Енді жүйеге кіре аласыз.' }, 201);
+});
+
 app.post('/bootstrap', async c => {
   const configuredSecret = c.env.BOOTSTRAP_SECRET;
   const suppliedSecret = c.req.header('x-bootstrap-secret') || '';
