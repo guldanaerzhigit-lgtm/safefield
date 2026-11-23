@@ -143,14 +143,14 @@ app.post('/register', async c => {
   if (!role) return c.json({ error: { code: 'INVALID_ROLE', message: 'Бұл рөлге тіркелу мүмкін емес' } }, 400);
   const id = crypto.randomUUID();
   try {
-    await c.env.DB.prepare("INSERT INTO users(id,email,password_hash,full_name,phone,role_id,status,locale) VALUES(?,?,?,?,?,?,'ACTIVE','kk')")
-      .bind(id,email,await hashPassword(data.password),data.fullName.trim(),data.phone?.trim() || null,role.id).run();
+    await c.env.DB.prepare("INSERT INTO users(id,email,password_hash,full_name,phone,role_id,status,locale) VALUES(?,?,?,?,?,?,?,'kk')")
+      .bind(id,email,await hashPassword(data.password),data.fullName.trim(),data.phone?.trim() || null,role.id,data.role === 'EMPLOYEE' ? 'ACTIVE' : 'INVITED').run();
   } catch {
     return c.json({ error: { code: 'REGISTRATION_FAILED', message: 'Тіркелгі жасау мүмкін болмады. Email бұрын қолданылған болуы мүмкін.' } }, 409);
   }
   await c.env.DB.prepare("INSERT INTO audit_logs(id,actor_user_id,action,resource_type,resource_id,metadata_json) VALUES(?,?,'PUBLIC_REGISTRATION','USER',?,?)")
     .bind(crypto.randomUUID(),id,id,JSON.stringify({role:data.role})).run();
-  return c.json({ ok:true, message:'Тіркелу сәтті аяқталды. Енді жүйеге кіре аласыз.' },201);
+  return c.json({ ok:true, status: data.role === 'EMPLOYEE' ? 'ACTIVE' : 'INVITED', message: data.role === 'EMPLOYEE' ? 'Тіркелу сәтті аяқталды. Енді жүйеге кіре аласыз.' : 'Өтінім қабылданды. Таңдалған рөлді әкімші мақұлдағаннан кейін жүйеге кіре аласыз.' },201);
 });
 
 app.post('/bootstrap', async c => {
