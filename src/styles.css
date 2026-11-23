@@ -164,3 +164,29 @@
 
 /* Phase 2: live GPS freshness and mobile map usability */
 .session-status.stale{background:#fff4e5;color:#a86612;border:1px solid #f3d7a8}.field-map-section .field-map{height:clamp(320px,58vh,620px);min-height:320px;border-radius:14px;overflow:hidden}.field-map-section .leaflet-container{height:100%;width:100%}.monitor-refresh{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.monitor-refresh small{color:#8491a3;font-size:11px}@media(max-width:720px){.sessions-content{padding-left:14px;padding-right:14px}.sessions-heading{align-items:flex-start;flex-direction:column;gap:14px}.monitor-refresh{width:100%;justify-content:space-between}.field-map-section .field-map{height:55vh;min-height:300px}.monitor-toolbar{display:flex;flex-direction:column;gap:9px}.monitor-toolbar input,.monitor-toolbar select{width:100%;min-height:44px}.monitor-grid{grid-template-columns:1fr}.monitor-card{min-width:0}.monitor-location{flex-wrap:wrap}.monitor-location a{margin-left:auto}}
+
+
+/* Phase 3 — incident reporting */
+.incident-form{background:#fff;border:1px solid #e5eaf0;border-radius:18px;padding:22px;margin:22px 0;display:grid;gap:14px;box-shadow:0 8px 28px rgba(15,23,42,.04)}
+.incident-form h2,.incident-list-heading h2{font-size:18px;margin:0;color:#142033}
+.incident-form label{display:grid;gap:7px;font-size:13px;font-weight:650;color:#425166}
+.incident-form input:not([type=file]),.incident-form textarea,.incident-form select{width:100%;border:1px solid #d8e0e9;border-radius:10px;padding:12px 13px;background:#fff;color:#172235;font:inherit;min-width:0}
+.incident-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.incident-form-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.incident-upload,.incident-form-actions .secondary-btn{display:inline-flex!important;align-items:center;gap:8px;border:1px solid #d8e0e9;border-radius:10px;padding:10px 13px;background:#f8fafc;color:#26364b;cursor:pointer;font-size:13px;font-weight:650}
+.incident-upload input{display:none}
+.incident-form small{color:#64748b;font-size:12px}
+.incident-list-heading{display:flex;align-items:center;justify-content:space-between;margin:28px 0 14px}
+.incident-list-heading span{font-size:13px;color:#64748b}
+.incidents-list{display:grid;gap:13px}
+.incident-card{background:#fff;border:1px solid #e5eaf0;border-radius:16px;padding:18px;box-shadow:0 5px 18px rgba(15,23,42,.035)}
+.incident-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.incident-card h3{font-size:16px;margin:5px 0 0;color:#172235}
+.incident-category{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:750}
+.incident-card>p{font-size:14px;line-height:1.55;color:#536176;white-space:pre-wrap}
+.incident-meta{display:flex;gap:12px;flex-wrap:wrap;color:#64748b;font-size:12px}
+.incident-meta span{display:inline-flex;align-items:center;gap:5px}
+.incident-evidence{margin-top:12px;display:inline-flex;gap:7px;align-items:center;border:0;background:#eef5ff;color:#2457a6;border-radius:8px;padding:8px 11px;font-weight:650}
+.incident-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.incident-actions button{font-size:12px;padding:9px 11px}
+@media(max-width:640px){.incident-form{padding:16px;margin:16px 0}.incident-form-grid{grid-template-columns:1fr}.incident-form-actions{align-items:stretch}.incident-form-actions>*{flex:1;justify-content:center}.incident-card{padding:15px}.incident-card-head{align-items:flex-start}.incident-meta{gap:8px}}
