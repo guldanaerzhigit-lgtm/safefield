@@ -1,6 +1,12 @@
 name: Deploy SAFEFIELD API
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - 'wrangler.toml'
+      - '.github/workflows/deploy-worker.yml'
   workflow_dispatch:
 
 permissions:
