@@ -5,7 +5,8 @@ import { api } from '../services/api';
 import { Circle, CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 type Employee={id:string;fullName:string;phone:string|null;departmentId:string|null;departmentName:string|null;sessionId:string|null;sessionTitle:string|null;siteAddress:string|null;sessionStatus:string|null;startedAt:string|null;latitude:number|null;longitude:number|null;accuracy:number|null;locationAt:string|null};
-type Alert={id:string;alertType:string;priority:string;status:string;message:string|null;latitude:number|null;longitude:number|null;createdAt:string;employeeName:string};\ntype Zone={id:string;name:string;zoneType:'SAFE'|'WARNING'|'DANGER';centerLat:number;centerLng:number;radiusMeters:number};
+type Alert={id:string;alertType:string;priority:string;status:string;message:string|null;latitude:number|null;longitude:number|null;createdAt:string;employeeName:string};
+type Zone={id:string;name:string;zoneType:'SAFE'|'WARNING'|'DANGER';centerLat:number;centerLng:number;radiusMeters:number};
 function MapAutoFit({points}:{points:[number,number][]}){const map=useMap();useEffect(()=>{if(!points.length)return;if(points.length===1){map.setView(points[0],14,{animate:true});return;}map.fitBounds(points,{padding:[36,36],maxZoom:14,animate:true});},[map,points]);return null;}
 export function MonitoringPage(){
  const [employees,setEmployees]=useState<Employee[]>([]);const [alerts,setAlerts]=useState<Alert[]>([]);const [zones,setZones]=useState<Zone[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [query,setQuery]=useState('');const [filter,setFilter]=useState('ALL');const [updatedAt,setUpdatedAt]=useState('');
