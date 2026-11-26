@@ -62,9 +62,10 @@ async function enqueueEscalations(c: Context<AppEnv>, alertId: string, firstDela
 }
 
 
-async function sendImmediateSosPush(c: Context<AppEnv>, alertId: string) {
+async function sendImmediateSosPush(c: Context<AppEnv>, alertId: string, sessionId: string) {
   const user = c.get('user');
-  const supervisorId = user.supervisorId;
+  const sessionAssignment = await c.env.DB.prepare('SELECT supervisor_id FROM safety_sessions WHERE id=?').bind(sessionId).first<{supervisor_id:string|null}>();
+  const supervisorId = sessionAssignment?.supervisor_id || user.supervisorId;
   let delivered = 0;
   let failed = 0;
   const now = new Date().toISOString();
@@ -270,7 +271,7 @@ app.post('/:id/sos', async c => {
     `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude,location_accuracy) VALUES (?,?,?,?,'CRITICAL','OPEN',?,?,?,?)`
   ).bind(id, session.id, c.get('user').id, value.hidden ? 'HIDDEN_SOS' : 'SOS', value.message || (value.hidden ? 'Жасырын шұғыл көмек сигналы' : 'Шұғыл көмек қажет'), value.latitude ?? null, value.longitude ?? null, value.accuracy ?? null).run();
   await enqueueEscalations(c, id, 0);
-  await sendImmediateSosPush(c, id);
+  await sendImmediateSosPush(c, id, session.id);
   if (value.latitude != null && value.longitude != null) {
     await c.env.DB.prepare(
       "INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,recorded_at,source) VALUES (?,?,?,?,?,?,'GPS')"
