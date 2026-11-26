@@ -152,3 +152,33 @@
 .sf-v2 .dashboard-footer{color:#8aa095;border-color:#dcebe3}
 @media(max-width:1050px){.sf-v2 .sf-main-grid{grid-template-columns:1fr}.sf-v2 .sf-lower-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.sf-v2 .topbar{padding:0 14px}.sf-v2 .sf-header-date{display:none}.sf-v2 .page-content{padding:21px 13px}.sf-v2 .sf-welcome{align-items:flex-start;flex-direction:column}.sf-v2 .sf-welcome h1{font-size:22px}.sf-v2 .sf-live-chip{font-size:9px}.sf-v2 .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.sf-v2 .metric-card{min-width:0;padding:13px;min-height:137px}.sf-v2 .metric-value{font-size:24px}.sf-v2 .metric-label{line-height:1.4;min-height:28px}.sf-v2 .sf-lower-grid,.sf-v2 .sf-bottom-strip{grid-template-columns:1fr}.sf-v2 .sf-main-grid{gap:10px}.sf-v2 .sf-map-preview{height:190px}.sf-v2 .sf-quick-grid{grid-template-columns:1fr}.sf-v2 .sf-work-status,.sf-v2 .sf-today{padding:13px}.sf-v2 .profile-trigger span:not(.avatar){display:none}}
+
+/* Mobile drawer polish — keep the menu compact and on-brand */
+@media(max-width:700px){
+  .sf-v2 .sidebar{width:min(80vw,300px);max-width:300px}
+  .sf-v2 .sidebar nav{scrollbar-width:thin;scrollbar-color:rgba(143,207,172,.42) transparent}
+  .sf-v2 .sidebar nav::-webkit-scrollbar{width:4px}
+  .sf-v2 .sidebar nav::-webkit-scrollbar-thumb{background:rgba(143,207,172,.38);border-radius:8px}
+}
+.sf-v2 .sidebar-bottom{
+  background:linear-gradient(180deg,rgba(12,82,58,.16),rgba(3,46,33,.5));
+  border-top:1px solid rgba(184,230,201,.12);
+  border-radius:12px 12px 10px 10px;
+  padding:10px 8px 8px;
+  margin-top:auto
+}
+.sf-v2 .sidebar-status{
+  border-top:0;
+  border-bottom:1px solid rgba(184,230,201,.12);
+  color:#a9d2bd;
+  padding:10px 5px 12px
+}
+.sf-v2 .sidebar-status small{color:#78aa91}
+.sf-v2 .sidebar-user{padding:12px 4px 4px}
+.sf-v2 .sidebar-user b{color:#effff5}
+.sf-v2 .sidebar-user small{color:#9ac5ad}
+.sf-v2 .sidebar-user button{color:#add2bc;border-radius:8px;width:36px;height:36px}
+.sf-v2 .sidebar-user button:hover{background:rgba(255,255,255,.09);color:#fff}
+.sf-v2 .sidebar-user-profile:hover,.sf-v2 .sidebar-user-profile:focus-visible{background:rgba(255,255,255,.07)}
+.sf-v2 .avatar{background:#d8f4e4;color:#126443}
+.sf-v2 .sidebar-backdrop.visible{background:rgba(2,24,17,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
