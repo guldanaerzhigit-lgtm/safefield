@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import './dashboard-v2.css';
 import { Activity, AlertTriangle, BarChart3, Bell, Clock3, Compass, ClipboardList, QrCode, LogOut, MapPin, Menu, ShieldCheck, Users, X, RadioTower, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
