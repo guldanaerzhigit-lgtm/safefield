@@ -1,0 +1,65 @@
+/* SafeField V2 visual system — shared by every route */
+:root{--sf-ink:#10251f;--sf-muted:#64796f;--sf-green:#078b59;--sf-green-2:#16a66b;--sf-mint:#e8f5ef;--sf-line:#dcebe3;--sf-bg:#edf5f1}
+body{background:var(--sf-bg);color:var(--sf-ink);font-family:'DM Sans',sans-serif}
+.sessions-page,.setup-shell,.admin-shell{background:radial-gradient(ellipse at 82% 0%,rgba(56,170,119,.10),transparent 38%),#eff6f2;color:var(--sf-ink)}
+.sessions-top,.setup-top,.admin-top{background:rgba(255,255,255,.92);border-bottom:1px solid var(--sf-line);box-shadow:0 4px 20px rgba(18,67,45,.035)}
+.sessions-brand,.admin-brand{color:#123b2c}.sessions-brand svg,.admin-brand svg{color:var(--sf-green)}
+.back-link,.setup-top>a,.admin-back{color:#537466}
+.sessions-content,.admin-content{max-width:1440px}
+.sessions-heading h1,.admin-heading h1,.setup-card h1{color:#123b2c;font-family:Manrope,sans-serif}
+.sessions-heading p,.admin-heading p{color:#71877b}
+.eyebrow.light{color:#16875b}
+.session-form,.session-card,.sessions-list-head,.alert-card,.setup-card,.admin-stats article,.admin-card,.monitor-card,.field-map-section{background:#fff;border:1px solid #dcebe3;box-shadow:0 8px 26px rgba(21,73,48,.055);border-radius:14px}
+.session-form,.session-card,.sessions-list-head,.alert-card{color:#18382b}
+.session-form-head h2,.sessions-list-head h2,.card-heading h2{color:#18382b}
+.session-form-head p,.sessions-list-head p{color:#82978c}
+.session-form-grid label,.setup-form label{color:#49675a}
+.session-form-grid input,.session-form-grid select,.setup-form input,.monitor-toolbar input,.monitor-toolbar select{background:#fbfefc;border-color:#d8e8df;color:#244536;border-radius:9px}
+.session-form-grid input:focus,.session-form-grid select:focus,.setup-form input:focus{border-color:#35a978;box-shadow:0 0 0 3px #35a97818}
+.create-session-btn,.admin-primary,.submit-button{background:linear-gradient(135deg,#119765,#08764f);border-color:#0b8959;box-shadow:0 7px 18px #0c875222}
+.create-session-btn:hover,.admin-primary:hover,.submit-button:hover{background:#076b49}
+.secondary-btn,.admin-secondary,.admin-refresh,.refresh-btn{background:#fff;border-color:#d6e7dd;color:#557566;border-radius:9px}
+.secondary-btn:hover,.admin-secondary:hover,.admin-refresh:hover{background:#f1faf5}
+.safe-checkin-btn{background:#e7f7ee;color:#087b4e}
+.sos-btn{background:#fff0ed;color:#c7463c}
+.session-status.active,.session-status.planned{background:#e5f7ed;color:#138653}
+.session-status.completed{background:#edf4f0;color:#71877b}
+.sessions-empty{background:#fff;border:1px solid #dcebe3;border-radius:14px;color:#7b9185}
+.sessions-empty b{color:#345c49}
+.sessions-empty>div{background:#e7f6ee;color:#16865a}
+.alerts-summary>div{background:#fff;border:1px solid #dcebe3;border-radius:13px;box-shadow:0 6px 20px rgba(21,73,48,.04)}
+.alerts-summary b{color:#153b2c}.alerts-summary span{color:#758d80}
+.alert-card{box-shadow:0 6px 22px rgba(21,73,48,.045)}
+.alert-title h3,.monitor-card-head h3{color:#183b2c}
+.alert-employee,.monitor-card-head span,.monitor-detail span{color:#81958a}
+.alert-message{color:#587366}
+.alert-meta{border-color:#edf4f0}.alert-meta span{color:#81958a}
+.session-notice{background:#eaf8ef;border-color:#cdebd8;color:#18784f}
+.api-warning{background:#fff7e9;border-color:#f1dfbd;color:#94631f}
+.sessions-disclaimer{color:#8c8066}
+.field-map-section{padding:18px;margin:18px 0}
+.field-map{border-radius:12px;overflow:hidden}
+.monitor-toolbar{display:flex;gap:10px;margin:18px 0}
+.monitor-toolbar input{flex:1;min-width:0;height:42px;padding:0 13px}
+.monitor-toolbar select{height:42px;padding:0 12px}
+.monitor-card{padding:18px}
+.monitor-card-head{border-bottom:1px solid #edf4f0;padding-bottom:12px}
+.monitor-detail{color:#315d48}
+.monitor-location{border-top:1px solid #edf4f0;color:#16865a}
+.monitor-location small{color:#81958a}
+.dispatch-updated{color:#16865a}
+.setup-card{margin:44px auto}
+.setup-icon{background:#e5f6ed;color:#138653}
+.setup-note{background:#f0f8f3;color:#6d8778}
+.admin-content{padding-top:34px}
+.admin-stats article{padding:17px}
+.admin-brand span{background:#e7f6ee;color:#16865a}
+.login-shell{background:#fff}
+.login-visual{background:linear-gradient(145deg,#082c20,#0d6041 70%,#147a54)}
+.brand-mark{background:linear-gradient(145deg,#2bbd82,#08734d)}
+.login-panel{background:#fbfefc}
+.field{border-color:#dcebe3;border-radius:10px}
+.field:focus-within{border-color:#2ea875;box-shadow:0 0 0 3px #2ea87518}
+.form-icon{background:#e8f6ee;color:#138653}
+.invite-note{background:#f0f8f3}
+@media(max-width:700px){.sessions-content,.admin-content{padding:24px 15px 38px}.monitor-toolbar{flex-direction:column}.field-map-section{padding:10px}.sessions-top,.admin-top{padding:0 15px}}
