@@ -1,0 +1,62 @@
+/* SafeField Dashboard V2 — emerald command center */
+.app-shell{min-height:100vh;background:#081b18;color:#e8f3ee;font-family:'DM Sans',sans-serif}
+.sidebar{background:linear-gradient(180deg,#102d26 0%,#0b211c 100%);border-right:1px solid rgba(176,220,199,.1);padding:26px 16px 18px;box-shadow:12px 0 40px rgba(0,0,0,.12)}
+.sidebar-brand{color:#f1fff7;letter-spacing:.12em;padding-bottom:38px}
+.sidebar-brand .brand-mark{background:linear-gradient(145deg,#3bbd88,#147454);color:#f4fff9;box-shadow:0 8px 24px rgba(34,178,122,.22)}
+.workspace-label{color:#6f9a87;letter-spacing:.18em}
+.nav-item{color:#9ab9aa;border-radius:10px;height:44px;font-size:12px;transition:background .18s,color .18s}
+.nav-item.selected{background:linear-gradient(100deg,rgba(49,174,121,.22),rgba(49,174,121,.07));color:#eafff3;box-shadow:inset 3px 0 #45d69b}
+.nav-item:hover{background:rgba(76,190,139,.12);color:#fff}
+.sidebar-status{border-color:rgba(183,220,201,.12);color:#9ab9aa}
+.sidebar-status small,.sidebar-user small{color:#709282}
+.sidebar-user b{color:#e3f2e9}
+.avatar{background:#d7f3e4;color:#176747}
+.sidebar-user button{color:#9ab9aa}
+.main-area{background:radial-gradient(ellipse at 75% -15%,rgba(48,144,103,.18),transparent 42%),#0a1d19}
+.topbar{height:70px;background:rgba(13,39,32,.86);border-bottom:1px solid rgba(181,220,199,.1);backdrop-filter:blur(18px);padding:0 38px}
+.breadcrumbs{color:#9bb9aa}.breadcrumbs span{color:#527664}
+.topbar-actions .icon-button{color:#b2cbbd}
+.icon-button i{border-color:#103329}
+.page-content{max-width:1500px;padding:38px 38px 28px}
+.page-heading{align-items:center;margin-bottom:30px}
+.eyebrow.light{color:#66c99a;letter-spacing:.2em}
+.page-heading h1{font:800 30px Manrope,sans-serif;color:#effbf4;letter-spacing:-.045em;margin:11px 0 7px}
+.page-heading p{font-size:12px;color:#8eae9d}
+.date-chip{background:rgba(26,69,54,.58);border:1px solid rgba(125,194,157,.2);border-radius:9px;color:#a9cbb8;padding:10px 14px}
+.metric-grid{gap:16px}
+.metric-card,.content-card{background:linear-gradient(145deg,rgba(23,59,46,.94),rgba(15,43,34,.96));border:1px solid rgba(130,190,154,.16);border-radius:15px;box-shadow:0 12px 34px rgba(0,0,0,.13);position:relative;overflow:hidden}
+.metric-card{padding:21px;min-height:166px;transition:transform .2s,border-color .2s}
+.metric-card:after{content:'';position:absolute;width:120px;height:120px;border-radius:50%;right:-54px;top:-58px;background:rgba(92,202,145,.055)}
+.metric-card:hover{transform:translateY(-3px);border-color:rgba(104,218,158,.34)}
+.metric-icon{width:39px;height:39px;border-radius:11px;margin-bottom:17px}
+.metric-icon.blue{background:rgba(82,166,214,.15);color:#83c9ed}
+.metric-icon.red{background:rgba(235,102,91,.15);color:#ff9288}
+.metric-icon.orange{background:rgba(232,173,86,.15);color:#f0c17b}
+.metric-icon.green{background:rgba(73,201,139,.15);color:#70e1aa}
+.metric-label{font-size:11px;color:#a3c0af;font-weight:600}
+.metric-value{font:800 31px Manrope;color:#f0fff6;margin:6px 0 4px}
+.metric-hint{font-size:9px;color:#719784}
+.dashboard-grid{gap:16px;margin-top:17px}
+.content-card{min-height:310px;padding:23px}
+.card-heading h2{font:700 15px Manrope;color:#effbf4}
+.card-heading p{color:#83a795}
+.live-pill{background:rgba(61,191,128,.13);color:#73e3a7;border:1px solid rgba(92,211,148,.18);padding:6px 10px}
+.live-pill i{box-shadow:0 0 0 4px rgba(64,205,137,.1)}
+.empty-state{margin-top:52px}
+.empty-icon{background:rgba(86,178,130,.12);color:#79d9a5;border:1px solid rgba(105,202,150,.15)}
+.empty-state b{color:#c7e2d2}
+.empty-state span{color:#7fa18e}
+.quick-links{margin-top:22px}
+.quick-links>div{border-bottom-color:rgba(174,215,190,.1);padding:14px 0}
+.quick-links b{color:#d8ece0;font-size:11px}
+.quick-links small{color:#82a391}
+.quick-icon.blue{background:rgba(82,166,214,.14);color:#83c9ed}
+.quick-icon.red{background:rgba(235,102,91,.14);color:#ff9288}
+.quick-icon.green{background:rgba(73,201,139,.14);color:#70e1aa}
+.dashboard-footer{color:#668777;border-top:1px solid rgba(171,211,186,.09);padding-top:16px}
+.api-warning{background:rgba(133,82,31,.18);border:1px solid rgba(230,173,86,.25);color:#f0c17b;border-radius:10px}
+.menu-toggle{color:#a9c9b7}
+.close-menu{color:#a9c9b7}
+.sidebar-backdrop{display:none}
+@media(max-width:1050px){.page-content{padding:28px 24px}.topbar{padding:0 24px}}
+@media(max-width:700px){.sidebar{box-shadow:20px 0 60px rgba(0,0,0,.38)}.sidebar-backdrop.visible{display:block;position:fixed;inset:0;background:rgba(2,12,9,.62);z-index:4;border:0}.topbar{height:60px;padding:0 16px}.page-content{padding:25px 15px}.page-heading h1{font-size:25px}.metric-card{min-height:148px;padding:15px}.metric-value{font-size:27px}.content-card{padding:18px}.dashboard-footer{line-height:1.6}}
