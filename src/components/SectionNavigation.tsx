@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Activity, AlertTriangle, BarChart3, Bell, Building2, ClipboardList, Compass, MapPin, Menu, QrCode, RadioTower, ShieldCheck, Users, UserPlus, X } from 'lucide-react';
+import { Activity, AlertTriangle, BarChart3, Bell, Building2, ClipboardList, Compass, MapPin, Menu, Siren, QrCode, RadioTower, ShieldCheck, Users, UserPlus, X } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
 const items = [
@@ -10,6 +10,7 @@ const items = [
   { to: '/work-orders', label: 'Жұмыс тапсырмалары', icon: ClipboardList },
   { to: '/assets', label: 'Нысандар каталогы', icon: QrCode },
   { to: '/alerts', label: 'Дабылдар орталығы', icon: AlertTriangle },
+  { to: '/incidents', label: 'Оқиғалар мен қауіптер', icon: Siren },
   { to: '/geofence', label: 'Smart Geofence', icon: RadioTower },
 ];
 
