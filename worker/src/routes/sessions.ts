@@ -64,13 +64,13 @@ async function enqueueEscalations(c: Context<AppEnv>, alertId: string, firstDela
 
 async function sendImmediateSosPush(c: Context<AppEnv>, alertId: string, sessionId: string) {
   const user = c.get('user');
-  const sessionAssignment = await c.env.DB.prepare('SELECT supervisor_id FROM safety_sessions WHERE id=?').bind(sessionId).first<{supervisor_id:string|null}>();
-  const supervisorId = sessionAssignment?.supervisor_id || user.supervisorId;
   let delivered = 0;
   let failed = 0;
   const now = new Date().toISOString();
 
   try {
+    const sessionAssignment = await c.env.DB.prepare('SELECT supervisor_id FROM safety_sessions WHERE id=?').bind(sessionId).first<{supervisor_id:string|null}>();
+    const supervisorId = sessionAssignment?.supervisor_id || user.supervisorId;
     const recipient = supervisorId
       ? await c.env.DB.prepare("SELECT id FROM users WHERE id=? AND status='ACTIVE'").bind(supervisorId).first<{id:string}>()
       : null;
