@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { authMiddleware, type AuthVariables } from '../middleware/auth';
 import type { Env } from '../types';
+import { sendWebPush } from '../utils/webPush';
 
 type AppEnv = { Bindings: Env; Variables: AuthVariables };
 const app = new Hono<AppEnv>();
@@ -58,6 +59,75 @@ async function enqueueEscalations(c: Context<AppEnv>, alertId: string, firstDela
       "INSERT INTO safety_escalations (id,alert_id,level,target_role,status,due_at) VALUES (?,?,?,?,'PENDING',?)"
     ).bind(crypto.randomUUID(), alertId, step.level, step.role, dueAt).run();
   }
+}
+
+
+async function sendImmediateSosPush(c: Context<AppEnv>, alertId: string, sessionId: string) {
+  const user = c.get('user');
+  let delivered = 0;
+  let failed = 0;
+  const now = new Date().toISOString();
+
+  try {
+    const sessionAssignment = await c.env.DB.prepare('SELECT supervisor_id FROM safety_sessions WHERE id=?').bind(sessionId).first<{supervisor_id:string|null}>();
+    const supervisorId = sessionAssignment?.supervisor_id || user.supervisorId;
+    const recipient = supervisorId
+      ? await c.env.DB.prepare("SELECT id FROM users WHERE id=? AND status='ACTIVE'").bind(supervisorId).first<{id:string}>()
+      : null;
+    if (!recipient) {
+      await c.env.DB.prepare("UPDATE safety_escalations SET status='FAILED' WHERE alert_id=? AND level=1 AND status='PENDING'").bind(alertId).run();
+      return;
+    }
+
+    const subscriptions = await c.env.DB.prepare(
+      'SELECT id,user_id,endpoint,p256dh,auth FROM notification_subscriptions WHERE user_id=?'
+    ).bind(recipient.id).all<{id:string;user_id:string;endpoint:string;p256dh:string;auth:string}>();
+
+    for (const sub of subscriptions.results) {
+      try {
+        if (!c.env.VAPID_PRIVATE_KEY || !c.env.VAPID_PUBLIC_KEY || !c.env.VAPID_SUBJECT) {
+          throw new Error('VAPID кілттері бапталмаған');
+        }
+        const status = await sendWebPush(sub, {
+          title: 'SAFEFIELD: SOS дабылы',
+          body: user.fullName + ' шұғыл көмек сұрады. Дереу хабарласыңыз.',
+          url: '/alerts',
+          alertId,
+          priority: 'CRITICAL'
+        }, {
+          VAPID_PRIVATE_KEY: c.env.VAPID_PRIVATE_KEY,
+          VAPID_PUBLIC_KEY: c.env.VAPID_PUBLIC_KEY,
+          VAPID_SUBJECT: c.env.VAPID_SUBJECT
+        });
+        delivered++;
+        await c.env.DB.prepare(
+          "INSERT INTO notification_logs(id,user_id,alert_id,channel,template_key,status,provider_message_id,sent_at) VALUES(?,?,?,'PUSH','SOS_IMMEDIATE','SENT',?,?)"
+        ).bind(crypto.randomUUID(), recipient.id, alertId, String(status), now).run();
+        await c.env.DB.prepare('UPDATE notification_subscriptions SET last_used_at=? WHERE id=?').bind(now, sub.id).run();
+      } catch (error) {
+        failed++;
+        const message = error instanceof Error ? error.message : 'Push жеткізу қатесі';
+        if (message.includes('HTTP 404') || message.includes('HTTP 410')) {
+          await c.env.DB.prepare('DELETE FROM notification_subscriptions WHERE id=?').bind(sub.id).run();
+        }
+        await c.env.DB.prepare(
+          "INSERT INTO notification_logs(id,user_id,alert_id,channel,template_key,status,error_message) VALUES(?,?,?,'PUSH','SOS_IMMEDIATE','FAILED',?)"
+        ).bind(crypto.randomUUID(), recipient.id, alertId, message.slice(0, 500)).run();
+      }
+    }
+
+    await c.env.DB.prepare(
+      "UPDATE safety_escalations SET status=?,sent_at=? WHERE alert_id=? AND level=1 AND status='PENDING'"
+    ).bind(delivered > 0 ? 'SENT' : 'FAILED', delivered > 0 ? now : null, alertId).run();
+  } catch (error) {
+    console.error('sos_immediate_push_failed', alertId, error);
+    await c.env.DB.prepare(
+      "UPDATE safety_escalations SET status='FAILED' WHERE alert_id=? AND level=1 AND status='PENDING'"
+    ).bind(alertId).run();
+    failed++;
+  }
+
+  console.log(JSON.stringify({event:'sos_immediate_push_attempt',alertId,delivered,failed}));
 }
 
 async function evaluateSafetyZones(c: Context<AppEnv>, sessionId: string, latitude: number, longitude: number) {
@@ -201,6 +271,7 @@ app.post('/:id/sos', async c => {
     `INSERT INTO safety_alerts (id,session_id,employee_id,alert_type,priority,status,message,latitude,longitude,location_accuracy) VALUES (?,?,?,?,'CRITICAL','OPEN',?,?,?,?)`
   ).bind(id, session.id, c.get('user').id, value.hidden ? 'HIDDEN_SOS' : 'SOS', value.message || (value.hidden ? 'Жасырын шұғыл көмек сигналы' : 'Шұғыл көмек қажет'), value.latitude ?? null, value.longitude ?? null, value.accuracy ?? null).run();
   await enqueueEscalations(c, id, 0);
+  await sendImmediateSosPush(c, id, session.id);
   if (value.latitude != null && value.longitude != null) {
     await c.env.DB.prepare(
       "INSERT INTO safety_locations (id,employee_id,session_id,latitude,longitude,recorded_at,source) VALUES (?,?,?,?,?,?,'GPS')"
